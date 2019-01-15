@@ -7,11 +7,17 @@ var authCallbackUri = 'http://localhost:8080/authCallback.html';
 
 var scope = 'https://www.googleapis.com/auth/photoslibrary.readonly';
 
+var accessToken = '';
+
 const oauth2Client = new google.auth.OAuth2(
   clientId,
   clientSecret,
   authCallbackUri
 );
+
+exports.getAccessToken = function() {
+  return accessToken;
+}
 
 exports.getCode = function(req, response) {
   console.log('invoke oauth2Client.generateAuthUrl');
@@ -48,14 +54,20 @@ exports.handleAuthCallback = function(request, response) {
     const access_token = tokens.tokens.access_token;
     console.log(access_token);
 
-    const apiEndpoint = 'https://photoslibrary.googleapis.com';
+    accessToken = access_token;
 
-    requestPromise.get(apiEndpoint + '/v1/albums', {
-      headers: {'Content-Type': 'application/json'},
-      json: true,
-      auth: {'bearer': access_token},
-    }).then( (result) => {
-      console.log(result);
-    });
+    // response.redirect('/users/syncer');
+    response.redirect('/syncer');
+
+    // const apiEndpoint = 'https://photoslibrary.googleapis.com';
+
+    // requestPromise.get(apiEndpoint + '/v1/albums', {
+    //   headers: {'Content-Type': 'application/json'},
+    //   json: true,
+    //   auth: {'bearer': access_token},
+    // }).then( (result) => {
+    //   console.log(result);
+
+    // });
   });
 }
