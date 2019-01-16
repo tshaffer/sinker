@@ -3,11 +3,11 @@ const requestPromise = require('request-promise');
 var oauth2Controller = require('./oauth2Controller');
 
 exports.startSync = function(request, response, next) {
-  // response.render('syncer');
+  response.render('syncer');
 
-  var accessToken = oauth2Controller.getAccessToken();
+  var access_token = oauth2Controller.getAccessToken();
   console.log('start sync process');
-  console.log(accessToken);
+  console.log(access_token);
 
   const apiEndpoint = 'https://photoslibrary.googleapis.com';
 

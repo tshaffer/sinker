@@ -57,19 +57,8 @@ exports.handleAuthCallback = function(request, response) {
 
     accessToken = access_token;
 
-    const apiEndpoint = 'https://photoslibrary.googleapis.com';
+    syncer.startSync(request, response);
 
-    // syncer.startSync(request, response);
-    console.log('from oauth2Controller, invoke: ', apiEndpoint + '/v1/albums');
-
-    requestPromise.get(apiEndpoint + '/v1/albums', {
-      headers: {'Content-Type': 'application/json'},
-      json: true,
-      auth: {'bearer': access_token},
-    }).then( (result) => {
-      console.log(result);
-    });
-  
     // response.redirect('/users/syncer');
     // response.redirect('/syncer');
 
