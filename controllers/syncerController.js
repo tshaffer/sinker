@@ -1,3 +1,7 @@
+const Fs = require('fs')  
+const Path = require('path')  
+const Axios = require('axios')
+
 const requestPromise = require('request-promise');
 // const axios = require('axios');
 
@@ -52,27 +56,39 @@ exports.startSync = function (request, response, next) {
         totalNumberOfMediaItems = totalNumberOfMediaItems + result.mediaItems.length;
         console.log('running total is: ', totalNumberOfMediaItems);
 
-        var mediaItems = [];
-        for (var i = 0; i < 9; i++) {
-          var downloadedMediaItem = result.mediaItems[i];
-          var mediaItem = {
-            id: downloadedMediaItem.id,
-            base_url: downloadedMediaItem.baseUrl,
-            filename: downloadedMediaItem.filename,
-            product_url: downloadedMediaItem.productUrl,
-          };
-          mediaItems.push(mediaItem);
-        }
-        var promise = MediaItem.insertMany(mediaItems);
-        promise
-        .then( (promiseResults) => {
-          console.log('all media items added to db');
+        var downloadedFile = result.mediaItems[0];
+
+        downloadImage(downloadedFile).then( () => {
+          console.log('downloaded complete');
           debugger;
-        })
-        .catch( (err) => {
+        }).catch( (err) => {
           console.log(err);
           debugger;
-        });
+        })
+
+
+
+        // var mediaItems = [];
+        // for (var i = 0; i < 9; i++) {
+        //   var downloadedMediaItem = result.mediaItems[i];
+        //   var mediaItem = {
+        //     id: downloadedMediaItem.id,
+        //     base_url: downloadedMediaItem.baseUrl,
+        //     filename: downloadedMediaItem.filename,
+        //     product_url: downloadedMediaItem.productUrl,
+        //   };
+        //   mediaItems.push(mediaItem);
+        // }
+        // var promise = MediaItem.insertMany(mediaItems);
+        // promise
+        // .then( (promiseResults) => {
+        //   console.log('all media items added to db');
+        //   debugger;
+        // })
+        // .catch( (err) => {
+        //   console.log(err);
+        //   debugger;
+        // });
 
         // var downloadedMediaItem = result.mediaItems[0];
         // var mediaItem = new MediaItem({
@@ -118,4 +134,30 @@ exports.startSync = function (request, response, next) {
 
   // });
 
+}
+
+async function downloadImage (downloadedFile) { 
+  var url = downloadedFile.baseUrl;
+  console.log('baseUrl');
+  console.log(url);
+
+  var filename = downloadedFile.filename;
+  console.log('filename');
+  console.log(filename);
+
+  const path = Path.resolve(__dirname, 'images', filename)
+  const writer = Fs.createWriteStream(path)
+
+  const response = await Axios({
+    url,
+    method: 'GET',
+    responseType: 'stream'
+  })
+
+  response.data.pipe(writer)
+
+  return new Promise((resolve, reject) => {
+    writer.on('finish', resolve)
+    writer.on('error', reject)
+  })
 }
