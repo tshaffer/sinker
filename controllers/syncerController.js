@@ -3,6 +3,8 @@ const requestPromise = require('request-promise');
 
 var oauth2Controller = require('./oauth2Controller');
 
+var MediaItem = require('../models/mediaItem');
+
 exports.startSync = function (request, response, next) {
   response.render('syncer');
 
@@ -25,6 +27,21 @@ exports.startSync = function (request, response, next) {
       json: true,
       auth: { 'bearer': access_token },
     }).then((result) => {
+      // mediaItem
+      //  baseUrl: string
+      //  filename: string
+      //  id: string
+      //  mediaMetadata: object
+      //    creationTime: string
+      //    height: string
+      //    photo: object
+      //      apertureFNumber: number
+      //      cameraMake: string
+      //      focalLength: number
+      //      isoEquivalent: number
+      //    width: string
+      //  mimeType: string
+      //  productUrl: string
       console.log(result.mediaItems.length);
       console.log(result.nextPageToken);
 
@@ -35,7 +52,49 @@ exports.startSync = function (request, response, next) {
       else {
         totalNumberOfMediaItems = totalNumberOfMediaItems + result.mediaItems.length;
         console.log('running total is: ', totalNumberOfMediaItems);
-        processGetMediaFiles(result.nextPageToken);
+
+        var mediaItems = [];
+        for (var i = 0; i < 9; i++) {
+          var downloadedMediaItem = result.mediaItems[i];
+          var mediaItem = {
+            id: downloadedMediaItem.id,
+            base_url: downloadedMediaItem.baseUrl,
+            filename: downloadedMediaItem.filename,
+            product_url: downloadedMediaItem.productUrl,
+          };
+          mediaItems.push(mediaItem);
+        }
+        var promise = MediaItem.insertMany(mediaItems);
+        promise
+        .then( (promiseResults) => {
+          console.log('all media items added to db');
+          debugger;
+        })
+        .catch( (err) => {
+          console.log(err);
+          debugger;
+        });
+
+        // var downloadedMediaItem = result.mediaItems[0];
+        // var mediaItem = new MediaItem({
+        //   id: downloadedMediaItem.id,
+        //   base_url: downloadedMediaItem.baseUrl,
+        //   filename: downloadedMediaItem.filename,
+        //   product_url: downloadedMediaItem.productUrl,
+        // });
+
+        // // processGetMediaFiles(result.nextPageToken);
+
+        // mediaItem.save(function(err) {
+        //   if (err) {
+        //     console.log(err);
+        //   }
+        //   else {
+        //     console.log('mediaItem successfully added to mongo:');
+        //     console.log(downloadedMediaItem);
+        //   }
+        //   debugger;
+        // });
       }
     });
   };
