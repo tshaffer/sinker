@@ -2,7 +2,6 @@ const requestPromise = require('request-promise');
 // const axios = require('axios');
 
 var oauth2Controller = require('./oauth2Controller');
-var mongoose = require('mongoose');
 var MediaItem = require('../models/mediaItem');
 
 exports.startSync = function (request, response, next) {
@@ -56,9 +55,7 @@ exports.startSync = function (request, response, next) {
         var mediaItems = [];
         for (var i = 0; i < 9; i++) {
           var downloadedMediaItem = result.mediaItems[i];
-          var _id = mongoose.Types.ObjectId(downloadedMediaItem.id);
           var mediaItem = {
-            _id,
             id: downloadedMediaItem.id,
             base_url: downloadedMediaItem.baseUrl,
             filename: downloadedMediaItem.filename,

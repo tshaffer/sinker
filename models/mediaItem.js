@@ -8,6 +8,7 @@ var MediaItemSchema = new Schema(
       base_url: {type: String, required: true},
       filename: {type: String, required: true},
       product_url: {type: String},
+      downloaded: {type: Boolean, default: false}
   }
 );
 
