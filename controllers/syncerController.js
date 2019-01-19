@@ -3,7 +3,6 @@ const Path = require('path')
 const Axios = require('axios')
 
 const requestPromise = require('request-promise');
-// const axios = require('axios');
 
 var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
