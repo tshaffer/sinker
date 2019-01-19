@@ -42,32 +42,33 @@ exports.startSync = function (request, response, next) {
         totalNumberOfMediaItems = totalNumberOfMediaItems + result.mediaItems.length;
         console.log('running total is: ', totalNumberOfMediaItems);
 
-        // var downloadedFile = result.mediaItems[0];
-
-        // downloadImage(downloadedFile).then( () => {
-        //   console.log('downloaded complete');
-        //   debugger;
-        // }).catch( (err) => {
-        //   console.log(err);
-        //   debugger;
-        // })
-
-
-
         var mediaItems = [];
-        for (var i = 0; i < 9; i++) {
+        for (var i = 0; i < result.mediaItems.length; i++) {
           var downloadedMediaItem = result.mediaItems[i];
-          var mediaMetadata = downloadedMediaItem.mediaMetadata;
+          var creationTime = null;
+          var width = null;
+          var height = null;
+          if (typeof downloadedMediaItem.mediaMetadata === 'object') {
+            var mediaMetadata = downloadedMediaItem.mediaMetadata;
+            if (typeof mediaMetadata.creationTime === 'string') {
+              creationTime = new Date(mediaMetadata.creationTime);
+            }
+            if (typeof mediaMetadata.width === 'string') {
+              width = Number(mediaMetadata.width);
+            }
+            if (typeof mediaMetadata.height === 'string') {
+              width = Number(mediaMetadata.height);
+            }
+          }
           var mediaItem = {
             id: downloadedMediaItem.id,
             baseUrl: downloadedMediaItem.baseUrl,
             fileName: downloadedMediaItem.filename,
             productUrl: downloadedMediaItem.productUrl,
             mimeType: downloadedMediaItem.mimeType,
-            creationTime: new Date(downloadedMediaItem.mediaMetadata.creationTime),
-            width: Number(downloadedMediaItem.mediaMetadata.width),
-            height: Number(downloadedMediaItem.mediaMetadata.height),
-      
+            creationTime,
+            width,
+            height,
           };
           mediaItems.push(mediaItem);
         }
@@ -75,38 +76,27 @@ exports.startSync = function (request, response, next) {
         promise
         .then( (promiseResults) => {
           console.log('all media items added to db');
-          debugger;
+          processGetMediaFiles(result.nextPageToken);
         })
         .catch( (err) => {
           console.log(err);
           debugger;
         });
-
-        // var downloadedMediaItem = result.mediaItems[0];
-        // var mediaItem = new MediaItem({
-        //   id: downloadedMediaItem.id,
-        //   base_url: downloadedMediaItem.baseUrl,
-        //   filename: downloadedMediaItem.filename,
-        //   product_url: downloadedMediaItem.productUrl,
-        // });
-
-        // // processGetMediaFiles(result.nextPageToken);
-
-        // mediaItem.save(function(err) {
-        //   if (err) {
-        //     console.log(err);
-        //   }
-        //   else {
-        //     console.log('mediaItem successfully added to mongo:');
-        //     console.log(downloadedMediaItem);
-        //   }
-        //   debugger;
-        // });
       }
     });
   };
 
   processGetMediaFiles('');
+
+    // var downloadedFile = result.mediaItems[0];
+
+  // downloadImage(downloadedFile).then( () => {
+  //   console.log('downloaded complete');
+  //   debugger;
+  // }).catch( (err) => {
+  //   console.log(err);
+  //   debugger;
+  // })
 
   // requestPromise.get(apiEndpoint + '/v1/albums', {
   //   headers: { 'Content-Type': 'application/json' },
