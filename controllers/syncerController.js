@@ -30,21 +30,7 @@ exports.startSync = function (request, response, next) {
       json: true,
       auth: { 'bearer': access_token },
     }).then((result) => {
-      // mediaItem
-      //  baseUrl: string
-      //  filename: string
-      //  id: string
-      //  mediaMetadata: object
-      //    creationTime: string
-      //    height: string
-      //    photo: object
-      //      apertureFNumber: number
-      //      cameraMake: string
-      //      focalLength: number
-      //      isoEquivalent: number
-      //    width: string
-      //  mimeType: string
-      //  productUrl: string
+
       console.log(result.mediaItems.length);
       console.log(result.nextPageToken);
 
@@ -56,39 +42,45 @@ exports.startSync = function (request, response, next) {
         totalNumberOfMediaItems = totalNumberOfMediaItems + result.mediaItems.length;
         console.log('running total is: ', totalNumberOfMediaItems);
 
-        var downloadedFile = result.mediaItems[0];
+        // var downloadedFile = result.mediaItems[0];
 
-        downloadImage(downloadedFile).then( () => {
-          console.log('downloaded complete');
-          debugger;
-        }).catch( (err) => {
-          console.log(err);
-          debugger;
-        })
-
-
-
-        // var mediaItems = [];
-        // for (var i = 0; i < 9; i++) {
-        //   var downloadedMediaItem = result.mediaItems[i];
-        //   var mediaItem = {
-        //     id: downloadedMediaItem.id,
-        //     base_url: downloadedMediaItem.baseUrl,
-        //     filename: downloadedMediaItem.filename,
-        //     product_url: downloadedMediaItem.productUrl,
-        //   };
-        //   mediaItems.push(mediaItem);
-        // }
-        // var promise = MediaItem.insertMany(mediaItems);
-        // promise
-        // .then( (promiseResults) => {
-        //   console.log('all media items added to db');
+        // downloadImage(downloadedFile).then( () => {
+        //   console.log('downloaded complete');
         //   debugger;
-        // })
-        // .catch( (err) => {
+        // }).catch( (err) => {
         //   console.log(err);
         //   debugger;
-        // });
+        // })
+
+
+
+        var mediaItems = [];
+        for (var i = 0; i < 9; i++) {
+          var downloadedMediaItem = result.mediaItems[i];
+          var mediaMetadata = downloadedMediaItem.mediaMetadata;
+          var mediaItem = {
+            id: downloadedMediaItem.id,
+            baseUrl: downloadedMediaItem.baseUrl,
+            fileName: downloadedMediaItem.filename,
+            productUrl: downloadedMediaItem.productUrl,
+            mimeType: downloadedMediaItem.mimeType,
+            creationTime: new Date(downloadedMediaItem.mediaMetadata.creationTime),
+            width: Number(downloadedMediaItem.mediaMetadata.width),
+            height: Number(downloadedMediaItem.mediaMetadata.height),
+      
+          };
+          mediaItems.push(mediaItem);
+        }
+        var promise = MediaItem.insertMany(mediaItems);
+        promise
+        .then( (promiseResults) => {
+          console.log('all media items added to db');
+          debugger;
+        })
+        .catch( (err) => {
+          console.log(err);
+          debugger;
+        });
 
         // var downloadedMediaItem = result.mediaItems[0];
         // var mediaItem = new MediaItem({
