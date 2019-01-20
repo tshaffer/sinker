@@ -64,7 +64,7 @@ exports.startSync = function (request, response, next) {
                   width = Number(mediaMetadata.width);
                 }
                 if (typeof mediaMetadata.height === 'string') {
-                  width = Number(mediaMetadata.height);
+                  height = Number(mediaMetadata.height);
                 }
               }
               var mediaItem = {

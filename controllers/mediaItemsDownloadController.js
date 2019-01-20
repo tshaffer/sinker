@@ -38,6 +38,14 @@ exports.downloadMediaItems = function (request, response) {
                 const mediaItem = cloudMediaItems[cloudMediaItemIndex];
                 downloadMediaItem(mediaItem).then(() => {
                     console.log('downloaded mediaItem: ', mediaItem.fileName);
+
+                    // update db - set downloaded flag to true
+                    mediaItem.set( { downloaded: true });
+                    mediaItem.save( (err, updatedMediaItem) => {
+                        if (err) debugger;
+                        console.log(updatedMediaItem);
+                    });
+
                     messageData = {
                         type: 'ProgressItem',
                         data: 'Downloaded mediaItem: ' + mediaItem.fileName 
@@ -55,16 +63,6 @@ exports.downloadMediaItems = function (request, response) {
             }
             
             executeDownloadMediaItems(0);
-
-            // const mediaItem = cloudMediaItems[0];
-
-            // downloadMediaItem(mediaItem).then(() => {
-            //     console.log('downloaded complete');
-            //     debugger;
-            // }).catch((err) => {
-            //     console.log(err);
-            //     debugger;
-            // })
         });
     })
 
