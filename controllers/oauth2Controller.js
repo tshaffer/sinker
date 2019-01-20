@@ -58,7 +58,6 @@ exports.handleAuthCallback = function(request, response) {
     accessToken = access_token;
 
     response.redirect('/syncerHome');
-    
     // syncer.startSync(request, response);
 
     // response.redirect('/users/syncer');
