@@ -11,21 +11,38 @@ const baseDir = '/Users/brightsign/Documents/mediaItems';
 exports.downloadMediaItems = function (request, response) {
     const wss = new WebSocket.Server({ port: 8080 })
 
+    var messageData = {};
+
     console.log('setup wss');
     wss.on('connection', ws => {
         ws.on('message', message => {
             console.log(`Received message => ${message}`)
         })
         console.log('connection on');
-        ws.send('Preparing download...')
+        // ws.send('Preparing download...')
+        messageData = {
+            type: 'OverallStatus',
+            data: 'Preparing download...'
+        };
+        ws.send(JSON.stringify(messageData));
 
         MediaItem.find({ 'downloaded': false }, 'id productUrl baseUrl fileName', (err, cloudMediaItems) => {
-            ws.send('Remaining media items to download: ' + cloudMediaItems.length.toString());
+            messageData = {
+                type: 'OverallStatus',
+                data: 'Remaining media items to download: ' + cloudMediaItems.length.toString() 
+            };
+            ws.send(JSON.stringify(messageData));
+            // ws.send('Remaining media items to download: ' + cloudMediaItems.length.toString());
 
             var executeDownloadMediaItems = (cloudMediaItemIndex) => {
                 const mediaItem = cloudMediaItems[cloudMediaItemIndex];
                 downloadMediaItem(mediaItem).then(() => {
                     console.log('downloaded mediaItem: ', mediaItem.fileName);
+                    messageData = {
+                        type: 'ProgressItem',
+                        data: 'Downloaded mediaItem: ' + mediaItem.fileName 
+                    };
+                    ws.send(JSON.stringify(messageData));        
                     cloudMediaItemIndex = cloudMediaItemIndex + 1;
                     if (cloudMediaItemIndex > 9) {
                         debugger;
