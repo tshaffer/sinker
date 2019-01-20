@@ -11,13 +11,15 @@
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
     "express": "~4.16.0",
+    "express-ws": "^4.0.0",
     "googleapis": "^36.0.0",
     "http-errors": "~1.6.2",
     "mongoose": "^5.4.4",
     "morgan": "~1.9.0",
     "pug": "2.0.0-beta11",
     "request": "^2.88.0",
-    "request-promise": "^4.2.2"
+    "request-promise": "^4.2.2",
+    "ws": "^6.1.2"
   },
   "devDependencies": {
     "nodemon": "^1.18.9"

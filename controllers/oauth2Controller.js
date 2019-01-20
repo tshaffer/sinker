@@ -4,7 +4,7 @@ const syncer = require('./syncerController');
 
 var clientId = '1006826584050-4cad42jrlnu0bmophpuq7rt2nupslmmp.apps.googleusercontent.com';
 var clientSecret = 'N3XZuKHm04cMPz8yo6wcgmBw';
-var authCallbackUri = 'http://localhost:8080/authCallback.html';
+var authCallbackUri = 'http://localhost:3000/authCallback.html';
 
 var scope = 'https://www.googleapis.com/auth/photoslibrary.readonly';
 

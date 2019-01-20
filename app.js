@@ -18,6 +18,23 @@ var usersRouter = require('./routes/users');
 
 var app = express();
 
+const WebSocket = require('ws')
+const wss = new WebSocket.Server({ port: 8080 })
+
+console.log('setup wss');
+wss.on('connection', ws => {
+  ws.on('message', message => {
+    console.log(`Received message => ${message}`)
+  })
+  console.log('connection on');
+  ws.send('ho!')
+})
+
+
+// var expressWs = require('express-ws')(app);
+// console.log('expressWs');
+// console.log(expressWs);
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
@@ -30,6 +47,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+
+// app.ws('/', function(ws, req) {
+//   ws.on('message', function(msg) {
+//     console.log(msg);
+//   });
+// });
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
