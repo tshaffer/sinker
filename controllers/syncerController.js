@@ -1,6 +1,3 @@
-const Fs = require('fs')  
-const Path = require('path')  
-const Axios = require('axios')
 
 const requestPromise = require('request-promise');
 
@@ -89,14 +86,6 @@ exports.startSync = function (request, response, next) {
 
     // var downloadedFile = result.mediaItems[0];
 
-  // downloadImage(downloadedFile).then( () => {
-  //   console.log('downloaded complete');
-  //   debugger;
-  // }).catch( (err) => {
-  //   console.log(err);
-  //   debugger;
-  // })
-
   // requestPromise.get(apiEndpoint + '/v1/albums', {
   //   headers: { 'Content-Type': 'application/json' },
   //   json: true,
@@ -117,28 +106,3 @@ exports.startSync = function (request, response, next) {
 
 }
 
-async function downloadImage (downloadedFile) { 
-  var url = downloadedFile.baseUrl;
-  console.log('baseUrl');
-  console.log(url);
-
-  var filename = downloadedFile.filename;
-  console.log('filename');
-  console.log(filename);
-
-  const path = Path.resolve(__dirname, 'images', filename)
-  const writer = Fs.createWriteStream(path)
-
-  const response = await Axios({
-    url,
-    method: 'GET',
-    responseType: 'stream'
-  })
-
-  response.data.pipe(writer)
-
-  return new Promise((resolve, reject) => {
-    writer.on('finish', resolve)
-    writer.on('error', reject)
-  })
-}
