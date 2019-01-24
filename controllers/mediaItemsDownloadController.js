@@ -8,7 +8,8 @@ var MediaItem = require('../models/mediaItem');
 var pug = require('pug');
 const WebSocket = require('ws')
 
-const baseDir = '/Users/brightsign/Documents/mediaItems';
+// const baseDir = '/Users/brightsign/Documents/mediaItems';
+const baseDir = '/Volumes/SHAFFEROTO/mediaItems';
 
 exports.downloadMediaItems = function (request, response) {
     const wss = new WebSocket.Server({ port: 8080 })
@@ -21,7 +22,6 @@ exports.downloadMediaItems = function (request, response) {
             console.log(`Received message => ${message}`)
         })
         console.log('connection on');
-        // ws.send('Preparing download...')
         messageData = {
             type: 'OverallStatus',
             data: 'Preparing download...'
@@ -34,7 +34,6 @@ exports.downloadMediaItems = function (request, response) {
                 data: 'Remaining media items to download: ' + cloudMediaItems.length.toString()
             };
             ws.send(JSON.stringify(messageData));
-            // ws.send('Remaining media items to download: ' + cloudMediaItems.length.toString());
 
             var executeDownloadMediaItems = (cloudMediaItemIndex) => {
                 const mediaItem = cloudMediaItems[cloudMediaItemIndex];
@@ -53,14 +52,24 @@ exports.downloadMediaItems = function (request, response) {
                         data: 'Downloaded mediaItem: ' + mediaItem.fileName
                     };
                     ws.send(JSON.stringify(messageData));
+
                     cloudMediaItemIndex = cloudMediaItemIndex + 1;
-                    if (cloudMediaItemIndex > 9) {
-                        debugger;
-                    }
+
+                    messageData = {
+                      type: 'OverallStatus',
+                      data: 'Remaining media items to download: ' + (cloudMediaItems.length - cloudMediaItemIndex).toString()
+                    };
+                    ws.send(JSON.stringify(messageData));
+      
+                    // if (cloudMediaItemIndex > 9) {
+                    //     debugger;
+                    // }
                     executeDownloadMediaItems(cloudMediaItemIndex);
                 }).catch((err) => {
-                    console.log(err);
-                    debugger;
+                  console.log('downloadMediaItem failed for mediaItem:');
+                  console.log(mediaItem);;
+                  console.log(err);
+                  debugger;
                 });
             }
 
@@ -106,7 +115,7 @@ function downloadMediaItem(mediaItem) {
                     console.log(baseUrl);
                 }
             }
-0
+
             // populatedMediaItem.mediaMetadata.width, height
 
             // TODO - can't really do this - some are movies
@@ -127,10 +136,15 @@ function downloadMediaItem(mediaItem) {
                 writer.on('finish', resolve)
                 writer.on('error', reject)
             }).catch((err) => {
-                debugger;
+              console.log('mediaItem file get/write failed for id:');
+              console.log(id);
+              debugger;
             });
         }).catch((err) => {
-            debugger;
+          console.log('mediaItems fetched failed for id:');
+          console.log(id);
+          console.log(err);
+          debugger;
         });
     });
 }
