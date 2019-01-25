@@ -4,7 +4,82 @@ const requestPromise = require('request-promise');
 var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
 
+fetchAlbumContents = function(access_token, albums) {
+
+  const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search';
+  const url = apiEndpoint;
+
+  const albumId = albums[0].id;
+  console.log(albumId);
+
+  requestPromise.post(url, {
+    headers: { 'Content-Type': 'application/json' },
+    json: true,
+    auth: { 'bearer': access_token },
+    body: { albumId },
+  }).then((result) => {
+    debugger;
+  }).catch( (err) => {
+    debugger;
+  });
+}
+
 exports.startSync = function (request, response, next) {
+
+  response.render('syncer');
+
+  var access_token = oauth2Controller.getAccessToken();
+  console.log('start sync process');
+  console.log(access_token);
+
+  const apiEndpoint = 'https://photoslibrary.googleapis.com';
+
+  console.log('invoke: ', apiEndpoint + '/v1/albums');
+
+  var totalNumberOfAlbums = 0;
+  var albums = [];
+
+  var processGetAlbums = (pageToken) => {
+    var url = apiEndpoint + '/v1/albums?pageSize=50'
+    if (pageToken !== '') {
+      url = url + '&pageToken=' + pageToken;
+    }
+    requestPromise.get(url, {
+      headers: { 'Content-Type': 'application/json' },
+      json: true,
+      auth: { 'bearer': access_token },
+    }).then((result) => {
+
+      console.log(result.albums.length);
+      console.log(result.nextPageToken);
+
+      if (result.albums.length === 0 || result.nextPageToken === undefined) {
+        console.log('retrieved all albums');
+        fetchAlbumContents(access_token, albums);
+      }
+      else {
+        for (var i = 0; i < result.albums.length; i++) {
+          var downloadedAlbum = result.albums[i];
+          const id = downloadedAlbum.id;
+          var title = downloadedAlbum.title;
+          var album = {
+            id,
+            title,
+            // coverPhotoBaesUrl
+            // coverPhotoMediaItemId
+            // productUrl
+          };
+          albums.push(album);
+        }
+        processGetAlbums(result.nextPageToken);
+      }
+    });
+  };
+
+  processGetAlbums('');
+}
+
+exports.startSyncOld = function (request, response, next) {
   response.render('syncer');
 
   // get list of photo's currently in db

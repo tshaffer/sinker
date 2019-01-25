@@ -8,7 +8,8 @@ var MediaItem = require('../models/mediaItem');
 var pug = require('pug');
 const WebSocket = require('ws')
 
-// const baseDir = '/Users/brightsign/Documents/mediaItems';
+// TODO - retry on errors.
+
 const baseDir = '/Volumes/SHAFFEROTO/mediaItems';
 
 exports.downloadMediaItems = function (request, response) {
@@ -61,6 +62,7 @@ exports.downloadMediaItems = function (request, response) {
                     };
                     ws.send(JSON.stringify(messageData));
       
+                    // NEED TO ADD A PROPER END CHECK
                     // if (cloudMediaItemIndex > 9) {
                     //     debugger;
                     // }
