@@ -8,11 +8,7 @@ fetchAlbumContents = function (access_token, albums) {
 
   return new Promise((resolve, reject) => {
 
-    // const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search';
     const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search?pageSize=100';
-
-    // TODO - assumes we get all mediaItems within an album in one request.
-    // otherwise, need to look at nextPageToken, etc.
 
     const albumsById = {};
 
@@ -41,21 +37,18 @@ fetchAlbumContents = function (access_token, albums) {
         albumsById[albumId] = mediaItemIdsInAlbum;
 
         if (result.nextPageToken === undefined) {
-          console.log('album content retrieval complete for index: ', albumIdIndex);
           albumIdIndex = albumIdIndex + 1;
           if (albumIdIndex >= albums.length) {
             console.log(albumsById);
             return resolve(albumsById);
           }
         }
-        console.log('retrieve album content for index: ', albumIdIndex);
         processFetchAlbumContents(albumIdIndex, result.nextPageToken);
       }).catch((err) => {
         debugger;
       });
     }
 
-    console.log('retrieve album content for index: ', 0);
     processFetchAlbumContents(0, '');
   });
 }
@@ -75,6 +68,7 @@ exports.startSync = function (request, response, next) {
   var totalNumberOfAlbums = 0;
   var albums = [];
 
+  // TODO - assumes all albums can be retrieved in a single call. must fix in future.
   var processGetAlbums = (pageToken) => {
     var url = apiEndpoint + '/v1/albums?pageSize=50'
     if (pageToken !== '') {
@@ -91,8 +85,12 @@ exports.startSync = function (request, response, next) {
 
       if (result.albums.length === 0 || result.nextPageToken === undefined) {
         console.log('retrieved all albums');
-        fetchAlbumContents(access_token, albums).then((results) => {
-          console.log(results);
+        fetchAlbumContents(access_token, albums).then((albumContentsByAlbumId) => {
+          console.log('All album related information retrieved');
+          console.log('Albums:');
+          console.log(albums);
+          console.log('Album contents by albumId');
+          console.log(albumContentsByAlbumId);
           debugger;
         }).catch((err) => {
           debugger;
