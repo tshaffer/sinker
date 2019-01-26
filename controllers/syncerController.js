@@ -8,7 +8,6 @@ fetchAlbumContents = function (access_token, albums) {
 
   return new Promise((resolve, reject) => {
 
-    // TODO - is this getting a max of 25 items?
     // const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search';
     const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search?pageSize=100';
 
@@ -17,65 +16,47 @@ fetchAlbumContents = function (access_token, albums) {
 
     const albumsById = {};
 
-    var processFetchAlbumContents = (albumIdIndex) => {
+    var processFetchAlbumContents = (albumIdIndex, pageToken) => {
+
       const albumId = albums[albumIdIndex].id;
-      const rq = requestPromise.post(apiEndpoint, {
+
+      let apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search?pageSize=100';
+      if (pageToken !== '' && (typeof pageToken !== 'undefined')) {
+        apiEndpoint = apiEndpoint + '&pageToken=' + pageToken;
+      }
+  
+      requestPromise.post(apiEndpoint, {
         headers: { 'Content-Type': 'application/json' },
         json: true,
         auth: { 'bearer': access_token },
         body: { albumId },
       }).then((result) => {
-        const mediaItemIdsInAlbum = result.mediaItems.map((mediaItem) => {
+        let mediaItemIdsInAlbum = result.mediaItems.map((mediaItem) => {
           return mediaItem.id;
         });
+        // concat data from prior call on same album
+        if (albumsById[albumId]) {
+          mediaItemIdsInAlbum = albumsById[albumId].concat(mediaItemIdsInAlbum);
+        }
         albumsById[albumId] = mediaItemIdsInAlbum;
 
-        albumIdIndex = albumIdIndex + 1;
-        if (albumIdIndex >= albums.length) {
-          console.log(albumsById);
-          return resolve(albumsById);
+        if (result.nextPageToken === undefined) {
+          console.log('album content retrieval complete for index: ', albumIdIndex);
+          albumIdIndex = albumIdIndex + 1;
+          if (albumIdIndex >= albums.length) {
+            console.log(albumsById);
+            return resolve(albumsById);
+          }
         }
-        processFetchAlbumContents(albumIdIndex);
+        console.log('retrieve album content for index: ', albumIdIndex);
+        processFetchAlbumContents(albumIdIndex, result.nextPageToken);
       }).catch((err) => {
         debugger;
       });
     }
 
-    processFetchAlbumContents(0);
-
-    // const promises = [];
-    // for (i = 0; i < albums.length; i++) {
-    //   const albumId = albums[i].id;
-    //   const rq = requestPromise.post(apiEndpoint, {
-    //     headers: { 'Content-Type': 'application/json' },
-    //     json: true,
-    //     auth: { 'bearer': access_token },
-    //     body: { albumId },
-    //   }).then((result) => {
-    //     const mediaItemIdsInAlbum = result.mediaItems.map((mediaItem) => {
-    //       return mediaItem.id;
-    //     });
-    //     resolve({
-    //       albumId,
-    //       mediaItemIdsInAlbum
-    //     });
-    //     myResults.push({
-    //       albumId,
-    //       mediaItemIdsInAlbum
-    //     });
-    //   }).catch((err) => {
-    //     debugger;
-    //   });
-    //   promises.push(rq);
-    // }
-
-    // // TODO - results is an array of undefined - why??
-    // Promise.all(promises).then((results) => {
-    //   console.log(myResults);
-    //   resolve(myResults);
-    // }).catch((err) => {
-    //   debugger;
-    // });
+    console.log('retrieve album content for index: ', 0);
+    processFetchAlbumContents(0, '');
   });
 }
 
