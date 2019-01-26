@@ -9,7 +9,11 @@ fetchAlbumContents = function (access_token, albums) {
   return new Promise((resolve, reject) => {
 
     // TODO - is this getting a max of 25 items?
-    const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search';
+    // const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search';
+    const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search?pageSize=100';
+
+    // TODO - assumes we get all mediaItems within an album in one request.
+    // otherwise, need to look at nextPageToken, etc.
 
     const albumsById = {};
 
