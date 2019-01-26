@@ -4,23 +4,74 @@ const requestPromise = require('request-promise');
 var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
 
-fetchAlbumContents = function(access_token, albums) {
+fetchAlbumContents = function (access_token, albums) {
 
-  const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search';
-  const url = apiEndpoint;
+  return new Promise((resolve, reject) => {
 
-  const albumId = albums[0].id;
-  console.log(albumId);
+    // TODO - is this getting a max of 25 items?
+    const apiEndpoint = 'https://photoslibrary.googleapis.com/v1/mediaItems:search';
 
-  requestPromise.post(url, {
-    headers: { 'Content-Type': 'application/json' },
-    json: true,
-    auth: { 'bearer': access_token },
-    body: { albumId },
-  }).then((result) => {
-    debugger;
-  }).catch( (err) => {
-    debugger;
+    const albumsById = {};
+
+    var processFetchAlbumContents = (albumIdIndex) => {
+      const albumId = albums[albumIdIndex].id;
+      const rq = requestPromise.post(apiEndpoint, {
+        headers: { 'Content-Type': 'application/json' },
+        json: true,
+        auth: { 'bearer': access_token },
+        body: { albumId },
+      }).then((result) => {
+        const mediaItemIdsInAlbum = result.mediaItems.map((mediaItem) => {
+          return mediaItem.id;
+        });
+        albumsById[albumId] = mediaItemIdsInAlbum;
+
+        albumIdIndex = albumIdIndex + 1;
+        if (albumIdIndex >= albums.length) {
+          console.log(albumsById);
+          return resolve(albumsById);
+        }
+        processFetchAlbumContents(albumIdIndex);
+      }).catch((err) => {
+        debugger;
+      });
+    }
+
+    processFetchAlbumContents(0);
+
+    // const promises = [];
+    // for (i = 0; i < albums.length; i++) {
+    //   const albumId = albums[i].id;
+    //   const rq = requestPromise.post(apiEndpoint, {
+    //     headers: { 'Content-Type': 'application/json' },
+    //     json: true,
+    //     auth: { 'bearer': access_token },
+    //     body: { albumId },
+    //   }).then((result) => {
+    //     const mediaItemIdsInAlbum = result.mediaItems.map((mediaItem) => {
+    //       return mediaItem.id;
+    //     });
+    //     resolve({
+    //       albumId,
+    //       mediaItemIdsInAlbum
+    //     });
+    //     myResults.push({
+    //       albumId,
+    //       mediaItemIdsInAlbum
+    //     });
+    //   }).catch((err) => {
+    //     debugger;
+    //   });
+    //   promises.push(rq);
+    // }
+
+    // // TODO - results is an array of undefined - why??
+    // Promise.all(promises).then((results) => {
+    //   console.log(myResults);
+    //   resolve(myResults);
+    // }).catch((err) => {
+    //   debugger;
+    // });
   });
 }
 
@@ -55,7 +106,12 @@ exports.startSync = function (request, response, next) {
 
       if (result.albums.length === 0 || result.nextPageToken === undefined) {
         console.log('retrieved all albums');
-        fetchAlbumContents(access_token, albums);
+        fetchAlbumContents(access_token, albums).then((results) => {
+          console.log(results);
+          debugger;
+        }).catch((err) => {
+          debugger;
+        });
       }
       else {
         for (var i = 0; i < result.albums.length; i++) {
@@ -65,9 +121,6 @@ exports.startSync = function (request, response, next) {
           var album = {
             id,
             title,
-            // coverPhotoBaesUrl
-            // coverPhotoMediaItemId
-            // productUrl
           };
           albums.push(album);
         }

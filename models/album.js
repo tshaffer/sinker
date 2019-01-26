@@ -11,7 +11,7 @@ var AlbumSchema = new Schema(
   {
       id: {type: String, required: true},
       title: {type: String, required: true},
-      mediaItemIds: [Schema.Types.ObjectId],
+      mediaItemIds: [{ type: Schema.Types.ObjectId, ref: 'MediaItem' }],
   }
 );
 
