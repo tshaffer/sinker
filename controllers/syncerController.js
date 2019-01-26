@@ -3,6 +3,7 @@ const requestPromise = require('request-promise');
 
 var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
+var Album = require('../models/album');
 
 fetchAlbumContents = function (access_token, albums) {
 
@@ -92,6 +93,27 @@ exports.startSync = function (request, response, next) {
           console.log('Album contents by albumId');
           console.log(albumContentsByAlbumId);
           debugger;
+
+          var dbAlbums = [];
+          for (var i = 0; i < albums.length; i++) {
+            var dbAlbumData = albums[i];
+            var dbAlbum = {
+              id: dbAlbumData.id,
+              title: dbAlbumData.title,
+              mediaItemIds: albumContentsByAlbumId[dbAlbumData.id],
+            };
+            dbAlbums.push(dbAlbum);
+          }
+          var promise = Album.insertMany(dbAlbums);
+          promise
+            .then((promiseResults) => {
+              console.log('all albums added to db');
+              debugger;
+            })
+            .catch((err) => {
+              console.log(err);
+              debugger;
+            });
         }).catch((err) => {
           debugger;
         });
