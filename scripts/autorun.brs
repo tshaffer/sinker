@@ -5,10 +5,8 @@ Sub Main()
   photoManifest = ParseJson(manifest$)
 
   photoIds = photoManifest.albums.Cabo2018
-  print photoIds
-
-  photoId$ = photoIds[0]
-  filePath$ = "usb1:/mediaItems/" + photoId$ + ".jpg"
+  numPhotos% = photoIds.count()
+  photoIndex% = 0
 
   EnableZoneSupport(true)
 
@@ -17,12 +15,46 @@ Sub Main()
   imagePlayer.SetDefaultMode(1)
 	imagePlayer.Show()
 
+  msgPort = CreateObject("roMessagePort")
+
+  timer = CreateObject("roTimer")
+  timer.setPort(msgPort)
+  timer.SetElapsed(4, 0)
+  timer.Start()
+
   aa = {}
+  photoId$ = photoIds[photoIndex%]
+  filePath$ = "usb1:/mediaItems/" + photoId$ + ".jpg"
   aa.filename = filePath$
   ok = imagePlayer.DisplayFile(aa)
+  print "DisplayFile returned: ";ok
+  print filePath$
 
-  msgPort = CreateObject("roMessagePort")
-  EventLoop(msgPort)
+  while true
+
+    event = wait(0, msgPort)
+
+    print "event: " + type(event)
+
+    if type(event) = "roTimerEvent" then
+
+      photoIndex% = photoIndex% + 1
+      if photoIndex% >= numPhotos% then
+        photoIndex% = 0
+      endif
+
+      photoId$ = photoIds[photoIndex%]
+      filePath$ = "usb1:/mediaItems/" + photoId$ + ".jpg"
+      aa.filename = filePath$
+      ok = imagePlayer.DisplayFile(aa)
+      print "DisplayFile returned: ";ok
+      print filePath$
+
+      timer.Start()
+
+    endif
+
+  end while
 
 End Sub
 
