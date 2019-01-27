@@ -69,13 +69,54 @@ Sub EventLoop(msgPort As Object)
 
   while true
     event = wait(0, msgPort)
-    print "event: " + type(event)
+'    print "event: " + type(event)
 
     if type(event) = "roHtmlWidgetEvent" then
       eventData = event.GetData()
-      print "reason: ";eventData.reason
+'      print "reason:"
+'      print eventData.reason
       if eventData.reason = "message" then
-        print "message: ";eventData.message
+
+'        print "message:"
+'        print eventData.message
+
+        message = eventData.message
+        if type(message.event) = "roString" then
+          if message.event = "intentParsed" then
+            if type(message.payload) = "roString" then
+
+              payload = ParseJson(message.payload)
+              intent = payload.intent
+              input = payload.input
+              slots = payload.slots
+              
+              print "intent:"
+              print intent.intentName
+              
+              print "input:"
+              print input
+
+              if type(slots) = "roArray" then
+
+                slot = slots[0]
+
+                print "slotName:"
+                print slot.slotName
+
+                print "rawValue:"
+                print slot.rawValue
+
+                if type(slot.value) = "roAssociativeArray" then
+                  print "slotValue:"
+                  print slot.value
+                endif
+
+              endif
+
+            endif
+          endif
+        endif
+
       endif
     endif
   end while
