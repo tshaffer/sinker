@@ -1,5 +1,12 @@
 Sub Main()
 
+  msgPort = CreateObject("roMessagePort")
+
+  ear = newEar(msgPort)
+  eventLoop(msgPort)
+
+  ' unreachable code
+
   print "PhotoPlayer start"
   manifest$ = ReadAsciiFile("usb1:/mediaItems/photoCollectionManifest.json")
   photoManifest = ParseJson(manifest$)
@@ -15,7 +22,6 @@ Sub Main()
   imagePlayer.SetDefaultMode(1)
 	imagePlayer.Show()
 
-  msgPort = CreateObject("roMessagePort")
 
   timer = CreateObject("roTimer")
   timer.setPort(msgPort)
@@ -62,7 +68,44 @@ End Sub
 Sub EventLoop(msgPort As Object)
 
   while true
-    msg = wait(0, msgPort)
+    event = wait(0, msgPort)
+    print "event: " + type(event)
+
+    if type(event) = "roHtmlWidgetEvent" then
+      eventData = event.GetData()
+      print "reason: ";eventData.reason
+      if eventData.reason = "message" then
+        print "message: ";eventData.message
+      endif
+    endif
   end while
 
 End Sub
+
+Function newEar(msgPort As Object) As Object
+
+  t = {}
+  t.msgPort = msgPort
+
+  print "=== Setting up node server..."
+  t.htmlRect = CreateObject("roRectangle", 0, 0, 1000, 1080)
+  is = {
+      port: 2999
+  }
+  config = {
+      nodejs_enabled: true,
+      inspector_server: is,
+      brightsign_js_objects_enabled: true,
+      javascript_enabled: true,
+      url:  "file:///sd:/server.html",
+      security_params: {websecurity: false}
+  }
+  t.htmlNet = CreateObject("roHtmlWidget", t.htmlRect, config)
+  t.htmlNet.setPort(t.msgPort)
+  t.htmlNet.AllowJavaScriptUrls({ all: "*" })
+  t.htmlNet.SetUserData("server")
+  t.htmlNet.Show()
+
+  return t
+
+End Function
