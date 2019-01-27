@@ -1,3 +1,4 @@
+var fs = require('fs');
 
 const requestPromise = require('request-promise');
 
@@ -54,7 +55,7 @@ fetchAlbumContents = function (access_token, albums) {
   });
 }
 
-exports.startSync = function (request, response, next) {
+exports.startSyncGetAlbums = function (request, response, next) {
 
   response.render('syncer');
 
@@ -137,7 +138,7 @@ exports.startSync = function (request, response, next) {
   processGetAlbums('');
 }
 
-exports.startSyncOld = function (request, response, next) {
+exports.startSyncGetMediaItems = function (request, response, next) {
   response.render('syncer');
 
   // get list of photo's currently in db
@@ -251,3 +252,50 @@ exports.startSyncOld = function (request, response, next) {
   // });
 }
 
+exports.startSync = function (request, response, next) {
+
+  response.render('syncer');
+
+  MediaItem.find(null, 'id fileName creationTime width height', (err, dbMediaItems) => {
+    Album.find(null, 'item title mediaItemIds', (err, dbAlbumItems) => {
+      var mediaItemsById = {};
+      for (var i = 0; i < dbMediaItems.length; i++) {
+        var dbMediaItem = dbMediaItems[i];
+        mediaItemsById[dbMediaItem.id] = {
+          id: dbMediaItem.id,
+          fileName: dbMediaItem.fileName,
+          width: dbMediaItem.width,
+          height: dbMediaItem.height,
+        };
+      }
+
+      var albumItemsByAlbumName = {};
+      for (var i = 0; i < dbAlbumItems.length; i++) {
+        var dbAlbumItem = dbAlbumItems[i];
+        var albumName = dbAlbumItem.title;
+        var mediaItemIdsInAlbum = [];
+        var dbMediaItemIdsInAlbum = dbAlbumItem.mediaItemIds;
+        for (var j = 0; j < dbMediaItemIdsInAlbum.length; j++) {
+          mediaItemIdsInAlbum.push(dbMediaItemIdsInAlbum[j]);
+        }
+        albumItemsByAlbumName[albumName] = dbMediaItemIdsInAlbum;
+      }
+
+      var manifestFile = {
+        'mediaItemsById': mediaItemsById,
+        'albums': albumItemsByAlbumName
+      };
+      var json = JSON.stringify(manifestFile, null, 2);
+      fs.writeFile('photoCollectionManifest.json', json, 'utf8', function(err) {
+        if (err) {
+          console.log('err');
+          console.log(err);
+        }
+        else {
+          console.log('photoCollectionManifest.json successfully written');
+        }
+      });
+    });
+  });
+  
+}
