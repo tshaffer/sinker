@@ -1,0 +1,83 @@
+<html>
+<body id="bodyId" style="background-color:#311c6b">
+    <h1 style="color:white">Speech demonstration</h1>
+    <p style="color:white" id="action">Listening</p>
+    <p style="color:white" id="result">
+    <p style="color:white" id="intentresult">
+</body>
+
+<script type="text/javascript">
+
+var bsMessagePort = new BSMessagePort()
+
+mqtt = require('/storage/sd/node_modules/mqtt/mqtt.js');
+var client  = mqtt.connect('mqtt:localhost');
+
+client.on("message", function (topic, payload) {
+    console.log([topic, payload].join(": "))
+    console.log("TOPIC: " + topic);
+
+    var event = ''
+    var content = ''
+    if (topic == 'hermes/asr/textCaptured') {
+        out = document.getElementById('result')
+        out.textContent = payload
+        event = 'textCaptured'
+        content = payload
+    } else if (topic == 'hermes/asr/startListening') {
+        act = document.getElementById('action')
+        act.style.color = "red"
+        event = 'startListening'
+    } else if (topic == 'hermes/asr/stopListening') {
+        act = document.getElementById('action')
+        act.style.color = "white"
+        event = 'stopListening'
+    } else if (topic == 'hermes/nlu/intentParsed') {
+        res = document.getElementById('intentresult')
+        res.textContent = payload
+        event = 'intentParsed'
+        content = payload
+    }
+    
+    if (event != '') {
+        console.log("PostBSMessage");
+        // console.log(content);
+        bsMessagePort.PostBSMessage({event: event, payload: String(payload)})
+    }
+})
+
+bsMessagePort.onbsmessage = function(msg) {
+    console.log("bsMessage.onbsmessage - entry");
+
+    if (msg.data['plugin'] == 'html') {
+        var command = msg.data['htmlcommand'];
+        if (command == 'showInfo') {
+            document.getElementById("bodyId").style.display = "block";
+            console.log('hide information');
+        } else if (command == 'hideInfo') {
+            document.getElementById("bodyId").style.display = "none";
+            console.log('show information');
+        }
+    }
+}
+
+client.subscribe("hermes/hotword/+/detected")
+client.subscribe("hermes/asr/toggleOff")
+client.subscribe("hermes/asr/toggleOn")
+client.subscribe("hermes/asr/startListening")
+client.subscribe("hermes/asr/stopListening")
+client.subscribe("hermes/asr/reload")
+client.subscribe("hermes/asr/error")
+client.subscribe("hermes/asr/textCaptured")
+client.subscribe("hermes/nlu/slotParsed")
+client.subscribe("hermes/nlu/intentParsed")
+client.subscribe("hermes/nlu/intentNotRecognised")
+client.subscribe("hermes/nlu/error")
+client.subscribe("hermes/nlu/query")
+client.subscribe("hermes/nlu/partialQuery")
+client.subscribe("hermes/nlu/versionRequest")
+client.subscribe("hermes/nlu/reload")
+
+
+</script>
+</html>
