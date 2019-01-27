@@ -1,17 +1,22 @@
 Sub Main()
 
+  baseDir$ = "usb1"
+  baseDir$ = "sd"
+
   msgPort = CreateObject("roMessagePort")
 
-  ear = newEar(msgPort)
-  eventLoop(msgPort)
+  ' ear = newEar(msgPort)
+  ' eventLoop(msgPort)
 
   ' unreachable code
 
   print "PhotoPlayer start"
-  manifest$ = ReadAsciiFile("usb1:/mediaItems/photoCollectionManifest.json")
+  manifest$ = ReadAsciiFile(baseDir$ + ":/mediaItems/photoCollectionManifest.json")
   photoManifest = ParseJson(manifest$)
 
   photoIds = photoManifest.albums.Cabo2018
+  photoIds = photoManifest.albums["New Zealand -Abel Tasman"]
+
   numPhotos% = photoIds.count()
   photoIndex% = 0
 
@@ -22,7 +27,6 @@ Sub Main()
   imagePlayer.SetDefaultMode(1)
 	imagePlayer.Show()
 
-
   timer = CreateObject("roTimer")
   timer.setPort(msgPort)
   timer.SetElapsed(4, 0)
@@ -30,7 +34,7 @@ Sub Main()
 
   aa = {}
   photoId$ = photoIds[photoIndex%]
-  filePath$ = "usb1:/mediaItems/" + photoId$ + ".jpg"
+  filePath$ = baseDir$ +":/mediaItems/" + photoId$ + ".jpg"
   aa.filename = filePath$
   ok = imagePlayer.DisplayFile(aa)
   print "DisplayFile returned: ";ok
@@ -50,7 +54,7 @@ Sub Main()
       endif
 
       photoId$ = photoIds[photoIndex%]
-      filePath$ = "usb1:/mediaItems/" + photoId$ + ".jpg"
+      filePath$ = baseDir$ + ":/mediaItems/" + photoId$ + ".jpg"
       aa.filename = filePath$
       ok = imagePlayer.DisplayFile(aa)
       print "DisplayFile returned: ";ok
