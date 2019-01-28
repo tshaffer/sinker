@@ -1,14 +1,18 @@
 Sub Main()
 
-  baseDir$ = "usb1"
-  baseDir$ = "sd"
 
   msgPort = CreateObject("roMessagePort")
 
-  ' ear = newEar(msgPort)
-  ' eventLoop(msgPort)
+  ear = newEar(msgPort)
+  eventLoop(msgPort)
 
-  ' unreachable code
+End Sub
+
+
+Sub EventLoop(msgPort As Object)
+
+  baseDir$ = "usb1"
+  baseDir$ = "sd"
 
   print "PhotoPlayer start"
   manifest$ = ReadAsciiFile(baseDir$ + ":/mediaItems/photoCollectionManifest.json")
@@ -30,15 +34,18 @@ Sub Main()
   timer = CreateObject("roTimer")
   timer.setPort(msgPort)
   timer.SetElapsed(4, 0)
-  timer.Start()
+  ' timer.Start()
 
   aa = {}
-  photoId$ = photoIds[photoIndex%]
-  filePath$ = baseDir$ +":/mediaItems/" + photoId$ + ".jpg"
-  aa.filename = filePath$
-  ok = imagePlayer.DisplayFile(aa)
-  print "DisplayFile returned: ";ok
-  print filePath$
+  'photoId$ = photoIds[photoIndex%]
+  'filePath$ = baseDir$ +":/mediaItems/" + photoId$ + ".jpg"
+  'aa.filename = filePath$
+  'ok = imagePlayer.DisplayFile(aa)
+  'print "DisplayFile returned: ";ok
+  'print filePath$
+
+  'playbackActive = false
+  photoIds = photoManifest.albums.Cabo2018
 
   while true
 
@@ -62,20 +69,8 @@ Sub Main()
 
       timer.Start()
 
-    endif
+    else if type(event) = "roHtmlWidgetEvent" then
 
-  end while
-
-End Sub
-
-
-Sub EventLoop(msgPort As Object)
-
-  while true
-    event = wait(0, msgPort)
-'    print "event: " + type(event)
-
-    if type(event) = "roHtmlWidgetEvent" then
       eventData = event.GetData()
 '      print "reason:"
 '      print eventData.reason
@@ -101,20 +96,35 @@ Sub EventLoop(msgPort As Object)
               print input
 
               if type(slots) = "roArray" then
+                if slots.count() > 0 then
+                  slot = slots[0]
 
-                slot = slots[0]
+                  print "slotName:"
+                  print slot.slotName
 
-                print "slotName:"
-                print slot.slotName
+                  print "rawValue:"
+                  print slot.rawValue
 
-                print "rawValue:"
-                print slot.rawValue
+                  if type(slot.value) = "roAssociativeArray" then
+                    print "slotValue:"
+                    print slot.value
 
-                if type(slot.value) = "roAssociativeArray" then
-                  print "slotValue:"
-                  print slot.value
+                    command = slot.value.value
+                    if command = "on" then
+                      'playbackActive = true
+                      timer.Start()
+                    else if command = "off" then
+                      'playbackActive = false
+                      timer.Stop()
+                    else if command = "blue" then
+                      photoIndex% = -1
+                      photoIds = photoManifest.albums["New Zealand -Abel Tasman"]
+                    else if command = "red" then
+                      photoIndex% = -1
+                      photoIds = photoManifest.albums.Cabo2018
+                    endif
+                  endif
                 endif
-
               endif
 
             endif
