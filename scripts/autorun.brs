@@ -1,141 +1,47 @@
 Sub Main()
-
-
-  msgPort = CreateObject("roMessagePort")
-
-  ear = newEar(msgPort)
-  eventLoop(msgPort)
-
+  RunTpp()
 End Sub
 
 
-Sub EventLoop(msgPort As Object)
+Sub RunTpp()
 
-  baseDir$ = "usb1"
-  baseDir$ = "sd"
+  tpp = {}
 
-  print "PhotoPlayer start"
-  manifest$ = ReadAsciiFile(baseDir$ + ":/mediaItems/photoCollectionManifest.json")
-  photoManifest = ParseJson(manifest$)
-
-  photoIds = photoManifest.albums.Cabo2018
-  photoIds = photoManifest.albums["New Zealand -Abel Tasman"]
-
-  numPhotos% = photoIds.count()
-  photoIndex% = 0
+' content is on sd or usb hard drive - select here
+  tpp.baseDir$ = "usb1"
+  tpp.baseDir$ = "sd"
 
   EnableZoneSupport(true)
+  
+  tpp.msgPort = CreateObject("roMessagePort")
+
+  tpp.ear = newEar(tpp.msgPort)
 
   r = CreateObject("roRectangle", 0, 0, 1920, 1080)
-  imagePlayer = CreateObject("roImageWidget", r)
-  imagePlayer.SetDefaultMode(1)
-	imagePlayer.Show()
+  tpp.imagePlayer = CreateObject("roImageWidget", r)
+  tpp.imagePlayer.SetDefaultMode(1)
+	tpp.imagePlayer.Show()
 
-  timer = CreateObject("roTimer")
-  timer.setPort(msgPort)
-  timer.SetElapsed(4, 0)
-  ' timer.Start()
+  tpp.timer = CreateObject("roTimer")
+  tpp.timer.setPort(tpp.msgPort)
+  tpp.timer.SetElapsed(4, 0)
 
-  aa = {}
-  'photoId$ = photoIds[photoIndex%]
-  'filePath$ = baseDir$ +":/mediaItems/" + photoId$ + ".jpg"
-  'aa.filename = filePath$
-  'ok = imagePlayer.DisplayFile(aa)
-  'print "DisplayFile returned: ";ok
-  'print filePath$
+  tpp.processHtmlEvent = processHtmlEvent
+  tpp.startPlayback = startPlayback
+  tpp.pausePlayback = pausePlayback
+  tpp.switchAlbum = switchAlbum
+  tpp.nextPhoto = nextPhoto
 
-  'playbackActive = false
-  photoIds = photoManifest.albums.Cabo2018
+  tpp.eventLoop = EventLoop
 
-  while true
+  print "PhotoPlayer start"
+  manifest$ = ReadAsciiFile(tpp.baseDir$ + ":/mediaItems/photoCollectionManifest.json")
+  tpp.photoManifest = ParseJson(manifest$)
 
-    event = wait(0, msgPort)
-
-    print "event: " + type(event)
-
-    if type(event) = "roTimerEvent" then
-
-      photoIndex% = photoIndex% + 1
-      if photoIndex% >= numPhotos% then
-        photoIndex% = 0
-      endif
-
-      photoId$ = photoIds[photoIndex%]
-      filePath$ = baseDir$ + ":/mediaItems/" + photoId$ + ".jpg"
-      aa.filename = filePath$
-      ok = imagePlayer.DisplayFile(aa)
-      print "DisplayFile returned: ";ok
-      print filePath$
-
-      timer.Start()
-
-    else if type(event) = "roHtmlWidgetEvent" then
-
-      eventData = event.GetData()
-'      print "reason:"
-'      print eventData.reason
-      if eventData.reason = "message" then
-
-'        print "message:"
-'        print eventData.message
-
-        message = eventData.message
-        if type(message.event) = "roString" then
-          if message.event = "intentParsed" then
-            if type(message.payload) = "roString" then
-
-              payload = ParseJson(message.payload)
-              intent = payload.intent
-              input = payload.input
-              slots = payload.slots
-              
-              print "intent:"
-              print intent.intentName
-              
-              print "input:"
-              print input
-
-              if type(slots) = "roArray" then
-                if slots.count() > 0 then
-                  slot = slots[0]
-
-                  print "slotName:"
-                  print slot.slotName
-
-                  print "rawValue:"
-                  print slot.rawValue
-
-                  if type(slot.value) = "roAssociativeArray" then
-                    print "slotValue:"
-                    print slot.value
-
-                    command = slot.value.value
-                    if command = "on" then
-                      'playbackActive = true
-                      timer.Start()
-                    else if command = "off" then
-                      'playbackActive = false
-                      timer.Stop()
-                    else if command = "blue" then
-                      photoIndex% = -1
-                      photoIds = photoManifest.albums["New Zealand -Abel Tasman"]
-                    else if command = "red" then
-                      photoIndex% = -1
-                      photoIds = photoManifest.albums.Cabo2018
-                    endif
-                  endif
-                endif
-              endif
-
-            endif
-          endif
-        endif
-
-      endif
-    endif
-  end while
+  tpp.eventLoop(tpp.msgPort)
 
 End Sub
+
 
 Function newEar(msgPort As Object) As Object
 
@@ -164,3 +70,122 @@ Function newEar(msgPort As Object) As Object
   return t
 
 End Function
+
+
+Sub EventLoop(msgPort As Object)
+
+  while true
+    event = wait(0, msgPort)
+    print "event: " + type(event)
+    if type(event) = "roTimerEvent" then
+      m.nextPhoto()
+    else if type(event) = "roHtmlWidgetEvent" then
+      m.processHtmlEvent(event)
+    endif
+  end while
+
+End Sub
+
+
+Sub processHtmlEvent(event As Object)
+
+  eventData = event.GetData()
+'      print "reason:"
+'      print eventData.reason
+  if eventData.reason = "message" then
+'        print "message:"
+'        print eventData.message
+    message = eventData.message
+    if type(message.event) = "roString" then
+      if message.event = "intentParsed" then
+        if type(message.payload) = "roString" then
+
+          payload = ParseJson(message.payload)
+          intent = payload.intent
+          input = payload.input
+          slots = payload.slots
+          
+          print "intent:"
+          print intent.intentName
+          
+          print "input:"
+          print input
+
+          if type(slots) = "roArray" then
+            if slots.count() > 0 then
+              slot = slots[0]
+
+              print "slotName:"
+              print slot.slotName
+
+              print "rawValue:"
+              print slot.rawValue
+
+              if type(slot.value) = "roAssociativeArray" then
+                print "slotValue:"
+                print slot.value
+                command = slot.value.value
+                if command = "on" then
+                  m.startPlayback()
+                else if command = "off" then
+                  m.pausePlayback()
+                else if command = "blue" then
+                  m.switchAlbum("New Zealand -Abel Tasman")
+                else if command = "red" then
+                  m.switchAlbum("Cabo2018")
+                endif
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+  endif
+End Sub
+
+
+Sub startPlayback()
+  m.timer.Start()
+End Sub
+
+
+Sub pausePlayback()
+  m.timer.Stop()
+End Sub
+
+
+Sub switchAlbum(albumName As String)
+  m.photoIndex% = -1
+  m.photoIds = m.photoManifest.albums[albumName]
+  m.numPhotos% = m.photoIds.count()
+End Sub
+
+
+Sub nextPhoto()
+
+  ' perform initialization (select album) if necessary
+  if m.numPhotos% = invalid then
+    m.switchAlbum("Cabo2018")
+  endif
+
+  m.photoIndex% = m.photoIndex% + 1
+  if m.photoIndex% >= m.numPhotos% then
+    m.photoIndex% = 0
+  endif
+
+  photoId$ = m.photoIds[m.photoIndex%]
+  filePath$ = m.baseDir$ + ":/mediaItems/" + photoId$ + ".jpg"
+
+  aa = {}
+  aa.filename = filePath$
+  ok = m.imagePlayer.DisplayFile(aa)
+  print "DisplayFile returned: ";ok
+  print filePath$
+
+  m.timer.Start()
+
+End Sub
+
+
+
+
