@@ -1,10 +1,28 @@
 var fs = require('fs');
+var cloudconvert = new (require('cloudconvert'))('njk3d6nMW4YwESyySBwBPDY30DMtwjeXjrvuUMInXBGdG1fWPBO5fgVhDMOsF8LK');
 
 const requestPromise = require('request-promise');
 
 var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
 var Album = require('../models/album');
+
+
+exports.startSync = function (request, response, next) {
+
+  response.render('syncer');
+
+  fs.createReadStream('/Volumes/SHAFFEROTO/toConvert.jpg')
+    .pipe(cloudconvert.convert({
+      "input": "upload",
+      "inputformat": "heic",
+      "outputformat": "jpg",
+      "converteroptions.quality": {
+        "quality": "100"
+      }
+    }))
+    .pipe(fs.createWriteStream('/Volumes/SHAFFEROTO/converted.jpg'));
+}
 
 fetchAlbumContents = function (access_token, albums) {
 
@@ -22,7 +40,7 @@ fetchAlbumContents = function (access_token, albums) {
       if (pageToken !== '' && (typeof pageToken !== 'undefined')) {
         apiEndpoint = apiEndpoint + '&pageToken=' + pageToken;
       }
-  
+
       requestPromise.post(apiEndpoint, {
         headers: { 'Content-Type': 'application/json' },
         json: true,
@@ -56,6 +74,7 @@ fetchAlbumContents = function (access_token, albums) {
 }
 
 exports.startSyncGetAlbums = function (request, response, next) {
+  // exports.startSync = function (request, response, next) {
 
   response.render('syncer');
 
@@ -252,7 +271,7 @@ exports.startSyncGetMediaItems = function (request, response, next) {
   // });
 }
 
-exports.startSync = function (request, response, next) {
+exports.startSyncCreateManifest = function (request, response, next) {
 
   response.render('syncer');
 
@@ -286,7 +305,7 @@ exports.startSync = function (request, response, next) {
         'albums': albumItemsByAlbumName
       };
       var json = JSON.stringify(manifestFile, null, 2);
-      fs.writeFile('photoCollectionManifest.json', json, 'utf8', function(err) {
+      fs.writeFile('photoCollectionManifest.json', json, 'utf8', function (err) {
         if (err) {
           console.log('err');
           console.log(err);
@@ -297,5 +316,5 @@ exports.startSync = function (request, response, next) {
       });
     });
   });
-  
+
 }
