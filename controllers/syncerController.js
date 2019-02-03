@@ -9,7 +9,7 @@ var Album = require('../models/album');
 
 convertHeicFiles = function (heicMediaItems) {
 
-  const maxToDownload = 10;
+  const maxToDownload = 2;
 
   var convertHeicToJpg = (heicMediaItemIndex) => {
 
@@ -35,10 +35,26 @@ convertHeicFiles = function (heicMediaItems) {
         }))
         .pipe(fs.createWriteStream(outputFilePath)
         .on('finish', function () {
+
           console.log('conversion complete: ', outputFilePath);
+
+          // update the mimeType of the converted file.
+          MediaItem.update({ id: id }, { $set: { mimeType: 'image/jpeg' }}, function() {
+            console.log('db update complete for: ', id);
+          });
+          // MediaItem.updateOne(
+          //   { id: id }, 
+          //   { $set: { mimeType: 'image/jpeg' } },
+          //   { upsert: true }
+          // );
+
           heicMediaItemIndex = heicMediaItemIndex + 1;
           if (heicMediaItemIndex < heicMediaItems.length && heicMediaItemIndex < maxToDownload) {
             convertHeicToJpg(heicMediaItemIndex);
+          }
+          else {
+            console.log('all conversions complete');
+            return;
           }
         })
         .on('error', (errorArgument) => {
@@ -60,6 +76,7 @@ convertHeicFiles = function (heicMediaItems) {
     convertHeicToJpg(0);
   }
 }
+
 exports.startSync = function (request, response, next) {
 
   response.render('syncer');
@@ -68,23 +85,6 @@ exports.startSync = function (request, response, next) {
     console.log(heicMediaItems);
     convertHeicFiles(heicMediaItems);
   });
-
-
-
-
-  // fs.createReadStream('/Volumes/SHAFFEROTO/toConvert.jpg')
-  //   .pipe(cloudconvert.convert({
-  //     "input": "upload",
-  //     "inputformat": "heic",
-  //     "outputformat": "jpg",
-  //     "converteroptions.quality": {
-  //       "quality": "100"
-  //     }
-  //   }))
-  //   .pipe(fs.createWriteStream('/Volumes/SHAFFEROTO/converted.jpg'))
-  //   .on('end', function() {
-  //     console.log(data);;
-  //   })
 }
 
 fetchAlbumContents = function (access_token, albums) {
@@ -137,7 +137,6 @@ fetchAlbumContents = function (access_token, albums) {
 }
 
 exports.startSyncGetAlbums = function (request, response, next) {
-  // exports.startSync = function (request, response, next) {
 
   response.render('syncer');
 
