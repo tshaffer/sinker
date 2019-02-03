@@ -7,6 +7,33 @@ var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
 var Album = require('../models/album');
 
+findAndRenameFiles = function (mimeType, extension) {
+  MediaItem.find({ "mimeType": mimeType }, 'id', (err, files) => {
+    if (err) debugger;
+    files.forEach((file) => {
+      var fileNameWithoutExtension = '/Volumes/SHAFFEROTO/mediaItems/' + file.id + '.';
+      var inputFilePath = fileNameWithoutExtension + 'jpg';
+      if (fs.existsSync(inputFilePath)) {
+        var outputFilePath = fileNameWithoutExtension + extension;
+        console.log('Rename: ' + inputFilePath, ' to: ', outputFilePath);;
+        fs.rename(inputFilePath, outputFilePath, (err) => {
+          if (err) throw err;
+          console.log('Rename complete for: ' + outputFilePath);
+        });
+      }
+      else {
+        console.log('File no longer exists: ' + inputFilePath);
+      }
+    })
+  });
+}
+
+exports.startSyncRenameFiles = function (request, response, next) {
+  findAndRenameFiles('image/png', 'png');
+  findAndRenameFiles('video/mp4', 'mp4');
+  findAndRenameFiles('image/bmp', 'bmp');
+}
+
 convertHeicFiles = function (heicMediaItems) {
 
   const maxToDownload = 2;
@@ -34,32 +61,32 @@ convertHeicFiles = function (heicMediaItems) {
           }
         }))
         .pipe(fs.createWriteStream(outputFilePath)
-        .on('finish', function () {
+          .on('finish', function () {
 
-          console.log('conversion complete: ', outputFilePath);
+            console.log('conversion complete: ', outputFilePath);
 
-          // update the mimeType of the converted file.
-          MediaItem.update({ id: id }, { $set: { mimeType: 'image/jpeg' }}, function() {
-            console.log('db update complete for: ', id);
-          });
-          // MediaItem.updateOne(
-          //   { id: id }, 
-          //   { $set: { mimeType: 'image/jpeg' } },
-          //   { upsert: true }
-          // );
+            // update the mimeType of the converted file.
+            MediaItem.update({ id: id }, { $set: { mimeType: 'image/jpeg' } }, function () {
+              console.log('db update complete for: ', id);
+            });
+            // MediaItem.updateOne(
+            //   { id: id }, 
+            //   { $set: { mimeType: 'image/jpeg' } },
+            //   { upsert: true }
+            // );
 
-          heicMediaItemIndex = heicMediaItemIndex + 1;
-          if (heicMediaItemIndex < heicMediaItems.length && heicMediaItemIndex < maxToDownload) {
-            convertHeicToJpg(heicMediaItemIndex);
-          }
-          else {
-            console.log('all conversions complete');
-            return;
-          }
-        })
-        .on('error', (errorArgument) => {
-          debugger;
-        }));
+            heicMediaItemIndex = heicMediaItemIndex + 1;
+            if (heicMediaItemIndex < heicMediaItems.length && heicMediaItemIndex < maxToDownload) {
+              convertHeicToJpg(heicMediaItemIndex);
+            }
+            else {
+              console.log('all conversions complete');
+              return;
+            }
+          })
+          .on('error', (errorArgument) => {
+            debugger;
+          }));
     }
     else {
       heicMediaItemIndex = heicMediaItemIndex + 1;
@@ -77,7 +104,7 @@ convertHeicFiles = function (heicMediaItems) {
   }
 }
 
-exports.startSync = function (request, response, next) {
+exports.startSyncConvertHeicFiles = function (request, response, next) {
 
   response.render('syncer');
 
