@@ -1,5 +1,6 @@
 var fs = require('fs');
 var path = require('path');
+var fse = require('fs-extra');
 
 var cloudconvert = new (require('cloudconvert'))('njk3d6nMW4YwESyySBwBPDY30DMtwjeXjrvuUMInXBGdG1fWPBO5fgVhDMOsF8LK');
 
@@ -12,7 +13,7 @@ var Album = require('../models/album');
 const topLevelDirs = {};
 const secondLevelDirs = {};
 
-incrementDirCounter = function(dirNamesByKey, dirName) {
+incrementDirCounter = function (dirNamesByKey, dirName) {
   if (dirNamesByKey.hasOwnProperty(dirName)) {
     dirNamesByKey[dirName] = dirNamesByKey[dirName] + 1;
   }
@@ -27,24 +28,66 @@ exports.startSync = function (request, response, next) {
   const mediaItemsFolder = '/Volumes/SHAFFEROTO/mediaItems/';
 
   const directoryContents = fs.readdirSync(mediaItemsFolder);
-  directoryContents.forEach((directoryContentItem) => {
-    if (!directoryContentItem.startsWith('.')) {
-      const filePath = path.join(mediaItemsFolder, directoryContentItem);
-      const stats = fs.statSync(filePath);
-      if (stats.isFile()) {
-        const fileNameWithoutExtension = path.parse(directoryContentItem).name;
-        files.push(fileNameWithoutExtension);
 
-        const numChars = fileNameWithoutExtension.length;
-        const topLevelDirName = fileNameWithoutExtension.charAt(numChars - 2);
-        const secondLevelDirName = topLevelDirName + fileNameWithoutExtension.charAt(numChars - 1);
+  var foundOne = false;
+  var doIt = function (index) {
+    if (!foundOne) {
+      const directoryContentItem = directoryContents[index];
+      // directoryContents.forEach((directoryContentItem) => {
+      if (!directoryContentItem.startsWith('.')) {
+        const filePath = path.join(mediaItemsFolder, directoryContentItem);
+        const stats = fs.statSync(filePath);
+        if (stats.isFile()) {
 
-        incrementDirCounter(topLevelDirs, topLevelDirName);
-        incrementDirCounter(secondLevelDirs, secondLevelDirName);
+          foundOne = true;
+
+          const fileNameWithoutExtension = path.parse(directoryContentItem).name;
+          files.push(fileNameWithoutExtension);
+
+          const numChars = fileNameWithoutExtension.length;
+          const topLevelDirName = fileNameWithoutExtension.charAt(numChars - 2);
+          const secondLevelDirName = topLevelDirName + fileNameWithoutExtension.charAt(numChars - 1);
+
+          incrementDirCounter(topLevelDirs, topLevelDirName);
+          incrementDirCounter(secondLevelDirs, secondLevelDirName);
+
+          const targetDirectory = path.join(
+            mediaItemsFolder,
+            fileNameWithoutExtension.charAt(numChars - 2),
+            fileNameWithoutExtension.charAt(numChars - 1)
+          );
+          const targetFilePath = path.join(targetDirectory, directoryContentItem);
+          fsLocalFolderExists(targetDirectory).then((dirExists) => {
+            if (dirExists) {
+              fsCopyFile(filePath, targetFilePath);
+            }
+            else {
+              fsCreateNestedDirectory(targetDirectory).then(() => {
+                fsCopyFile(filePath, targetFilePath);
+              })
+                .catch((err) => {
+                  debugger;
+                })
+            }
+          })
+            .catch((err) => {
+              debugger;
+            });
+        }
+        else {
+          index++;
+          doIt(index);
+        }
+      }
+      else {
+        index++;
+        doIt(index);
       }
     }
-  });
-};
+  }
+
+  doIt(0);
+}
 
 findAndRenameFiles = function (mimeType, extension) {
   MediaItem.find({ "mimeType": mimeType }, 'id', (err, files) => {
@@ -444,5 +487,34 @@ exports.startSyncCreateManifest = function (request, response, next) {
       });
     });
   });
-
 }
+
+function fsLocalFolderExists(fullPath) {
+  return Promise.resolve(fse.existsSync(fullPath))
+    .then((exists) => {
+      if (exists) {
+        return fsLocalFileIsDirectory(fullPath);
+      }
+      return false;
+    });
+}
+
+function fsCreateNestedDirectory(dirPath) {
+  return fse.mkdirp(dirPath);
+}
+
+function fsLocalFileIsDirectory(fullPath) {
+  return fse.stat(fullPath)
+    .then((stat) => stat.isDirectory());
+}
+
+function fsCopyFile(sourcePath, destinationPath) {
+  // fs.createReadStream(sourcePath).pipe(fs.createWriteStream(destinationPath));
+  fse.copySync(sourcePath, destinationPath);
+  console.log('copied from: ', sourcePath, ' to ', destinationPath);
+}
+
+
+
+
+
