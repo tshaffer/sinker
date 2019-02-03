@@ -1,4 +1,6 @@
 var fs = require('fs');
+var path = require('path');
+
 var cloudconvert = new (require('cloudconvert'))('njk3d6nMW4YwESyySBwBPDY30DMtwjeXjrvuUMInXBGdG1fWPBO5fgVhDMOsF8LK');
 
 const requestPromise = require('request-promise');
@@ -6,6 +8,43 @@ const requestPromise = require('request-promise');
 var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
 var Album = require('../models/album');
+
+const topLevelDirs = {};
+const secondLevelDirs = {};
+
+incrementDirCounter = function(dirNamesByKey, dirName) {
+  if (dirNamesByKey.hasOwnProperty(dirName)) {
+    dirNamesByKey[dirName] = dirNamesByKey[dirName] + 1;
+  }
+  else {
+    dirNamesByKey[dirName] = 1;
+  }
+}
+
+exports.startSync = function (request, response, next) {
+
+  const files = [];
+  const mediaItemsFolder = '/Volumes/SHAFFEROTO/mediaItems/';
+
+  const directoryContents = fs.readdirSync(mediaItemsFolder);
+  directoryContents.forEach((directoryContentItem) => {
+    if (!directoryContentItem.startsWith('.')) {
+      const filePath = path.join(mediaItemsFolder, directoryContentItem);
+      const stats = fs.statSync(filePath);
+      if (stats.isFile()) {
+        const fileNameWithoutExtension = path.parse(directoryContentItem).name;
+        files.push(fileNameWithoutExtension);
+
+        const numChars = fileNameWithoutExtension.length;
+        const topLevelDirName = fileNameWithoutExtension.charAt(numChars - 2);
+        const secondLevelDirName = topLevelDirName + fileNameWithoutExtension.charAt(numChars - 1);
+
+        incrementDirCounter(topLevelDirs, topLevelDirName);
+        incrementDirCounter(secondLevelDirs, secondLevelDirName);
+      }
+    }
+  });
+};
 
 findAndRenameFiles = function (mimeType, extension) {
   MediaItem.find({ "mimeType": mimeType }, 'id', (err, files) => {
