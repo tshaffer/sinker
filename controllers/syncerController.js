@@ -7,21 +7,84 @@ var oauth2Controller = require('./oauth2Controller');
 var MediaItem = require('../models/mediaItem');
 var Album = require('../models/album');
 
+convertHeicFiles = function (heicMediaItems) {
 
+  const maxToDownload = 10;
+
+  var convertHeicToJpg = (heicMediaItemIndex) => {
+
+    var id = heicMediaItems[heicMediaItemIndex].id;
+    var fileName = id + '.jpg';
+    var inputFilePath = '/Volumes/SHAFFEROTO/mediaItems/' + fileName;
+    var outputFilePath = '/Users/tedshaffer/Pictures/sinker/convertedFromHeic/' + fileName;
+
+    console.log('check for existence of ' + inputFilePath);
+
+    if (fs.existsSync(inputFilePath)) {
+
+      console.log(inputFilePath + ' exists');
+
+      fs.createReadStream(inputFilePath)
+        .pipe(cloudconvert.convert({
+          "input": "upload",
+          "inputformat": "heic",
+          "outputformat": "jpg",
+          "converteroptions.quality": {
+            "quality": "100"
+          }
+        }))
+        .pipe(fs.createWriteStream(outputFilePath)
+        .on('finish', function () {
+          console.log('conversion complete: ', outputFilePath);
+          heicMediaItemIndex = heicMediaItemIndex + 1;
+          if (heicMediaItemIndex < heicMediaItems.length && heicMediaItemIndex < maxToDownload) {
+            convertHeicToJpg(heicMediaItemIndex);
+          }
+        })
+        .on('error', (errorArgument) => {
+          debugger;
+        }));
+    }
+    else {
+      heicMediaItemIndex = heicMediaItemIndex + 1;
+      if (heicMediaItemIndex < heicMediaItems.length) {
+        convertHeicToJpg(heicMediaItemIndex);
+      }
+      else {
+        debugger;
+      }
+    }
+  }
+
+  if (heicMediaItems.length > 0) {
+    convertHeicToJpg(0);
+  }
+}
 exports.startSync = function (request, response, next) {
 
   response.render('syncer');
 
-  fs.createReadStream('/Volumes/SHAFFEROTO/toConvert.jpg')
-    .pipe(cloudconvert.convert({
-      "input": "upload",
-      "inputformat": "heic",
-      "outputformat": "jpg",
-      "converteroptions.quality": {
-        "quality": "100"
-      }
-    }))
-    .pipe(fs.createWriteStream('/Volumes/SHAFFEROTO/converted.jpg'));
+  MediaItem.find({ "mimeType": "image/heif" }, 'id', (err, heicMediaItems) => {
+    console.log(heicMediaItems);
+    convertHeicFiles(heicMediaItems);
+  });
+
+
+
+
+  // fs.createReadStream('/Volumes/SHAFFEROTO/toConvert.jpg')
+  //   .pipe(cloudconvert.convert({
+  //     "input": "upload",
+  //     "inputformat": "heic",
+  //     "outputformat": "jpg",
+  //     "converteroptions.quality": {
+  //       "quality": "100"
+  //     }
+  //   }))
+  //   .pipe(fs.createWriteStream('/Volumes/SHAFFEROTO/converted.jpg'))
+  //   .on('end', function() {
+  //     console.log(data);;
+  //   })
 }
 
 fetchAlbumContents = function (access_token, albums) {
