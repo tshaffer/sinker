@@ -29,35 +29,30 @@ exports.startSync = function (request, response, next) {
 
   const directoryContents = fs.readdirSync(mediaItemsFolder);
 
-  var foundOne = false;
-  var doIt = function (index) {
-    if (!foundOne) {
-      const directoryContentItem = directoryContents[index];
-      // directoryContents.forEach((directoryContentItem) => {
-      if (!directoryContentItem.startsWith('.')) {
-        const filePath = path.join(mediaItemsFolder, directoryContentItem);
-        const stats = fs.statSync(filePath);
-        if (stats.isFile()) {
+  directoryContents.forEach((directoryContentItem) => {
+    if (!directoryContentItem.startsWith('.')) {
+      const filePath = path.join(mediaItemsFolder, directoryContentItem);
+      const stats = fs.statSync(filePath);
+      if (stats.isFile()) {
 
-          foundOne = true;
+        const fileNameWithoutExtension = path.parse(directoryContentItem).name;
+        files.push(fileNameWithoutExtension);
 
-          const fileNameWithoutExtension = path.parse(directoryContentItem).name;
-          files.push(fileNameWithoutExtension);
+        const numChars = fileNameWithoutExtension.length;
+        const topLevelDirName = fileNameWithoutExtension.charAt(numChars - 2);
+        const secondLevelDirName = topLevelDirName + fileNameWithoutExtension.charAt(numChars - 1);
 
-          const numChars = fileNameWithoutExtension.length;
-          const topLevelDirName = fileNameWithoutExtension.charAt(numChars - 2);
-          const secondLevelDirName = topLevelDirName + fileNameWithoutExtension.charAt(numChars - 1);
+        incrementDirCounter(topLevelDirs, topLevelDirName);
+        incrementDirCounter(secondLevelDirs, secondLevelDirName);
 
-          incrementDirCounter(topLevelDirs, topLevelDirName);
-          incrementDirCounter(secondLevelDirs, secondLevelDirName);
-
-          const targetDirectory = path.join(
-            mediaItemsFolder,
-            fileNameWithoutExtension.charAt(numChars - 2),
-            fileNameWithoutExtension.charAt(numChars - 1)
-          );
-          const targetFilePath = path.join(targetDirectory, directoryContentItem);
-          fsLocalFolderExists(targetDirectory).then((dirExists) => {
+        const targetDirectory = path.join(
+          mediaItemsFolder,
+          fileNameWithoutExtension.charAt(numChars - 2),
+          fileNameWithoutExtension.charAt(numChars - 1)
+        );
+        const targetFilePath = path.join(targetDirectory, directoryContentItem);
+        fsLocalFolderExists(targetDirectory)
+          .then((dirExists) => {
             if (dirExists) {
               fsCopyFile(filePath, targetFilePath);
             }
@@ -70,23 +65,13 @@ exports.startSync = function (request, response, next) {
                 })
             }
           })
-            .catch((err) => {
-              debugger;
-            });
-        }
-        else {
-          index++;
-          doIt(index);
-        }
-      }
-      else {
-        index++;
-        doIt(index);
+          .catch((err) => {
+            debugger;
+          });
+        
       }
     }
-  }
-
-  doIt(0);
+  });
 }
 
 findAndRenameFiles = function (mimeType, extension) {
