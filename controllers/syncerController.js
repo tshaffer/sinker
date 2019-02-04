@@ -22,16 +22,20 @@ incrementDirCounter = function (dirNamesByKey, dirName) {
   }
 }
 
-exports.startSync = function (request, response, next) {
+exports.startSyncShard = function (request, response, next) {
 
   const files = [];
   const mediaItemsFolder = '/Volumes/SHAFFEROTO/mediaItems/';
+  const backupMediaItemsFolder = '/Volumes/SHAFFEROTO/unshardedMediaItems/';
+
+  var numFilesPreviouslyCopied = 0;
 
   const directoryContents = fs.readdirSync(mediaItemsFolder);
 
   directoryContents.forEach((directoryContentItem) => {
     if (!directoryContentItem.startsWith('.')) {
       const filePath = path.join(mediaItemsFolder, directoryContentItem);
+      const backupPath = path.join(backupMediaItemsFolder, directoryContentItem);
       const stats = fs.statSync(filePath);
       if (stats.isFile()) {
 
@@ -54,12 +58,21 @@ exports.startSync = function (request, response, next) {
         fsLocalFolderExists(targetDirectory)
           .then((dirExists) => {
             if (dirExists) {
-              fsCopyFile(filePath, targetFilePath);
+              if (!fs.existsSync(targetFilePath)) {
+                fsCopyFile(filePath, targetFilePath);
+                fsMoveFile(filePath, backupPath);
+              }
+              else {
+                fsMoveFile(filePath, backupPath);
+                numFilesPreviouslyCopied++;
+                console.log('numFilesPreviousCopied: ', numFilesPreviouslyCopied);
+              }
             }
             else {
-              fsCreateNestedDirectory(targetDirectory).then(() => {
-                fsCopyFile(filePath, targetFilePath);
-              })
+              fsCreateNestedDirectory(targetDirectory)
+                .then(() => {
+                  fsCopyFile(filePath, targetFilePath);
+                })
                 .catch((err) => {
                   debugger;
                 })
@@ -68,10 +81,25 @@ exports.startSync = function (request, response, next) {
           .catch((err) => {
             debugger;
           });
-        
       }
     }
   });
+}
+
+exports.startSync = function (request, response, next) {
+  const walkSync = (dir, filelist = []) => {
+    fs.readdirSync(dir).forEach(file => {
+      filelist = fs.statSync(path.join(dir, file)).isDirectory()
+        ? walkSync(path.join(dir, file), filelist)
+        : filelist.concat(path.join(dir, file));
+
+    });
+    return filelist;
+  }
+
+  var inList = [];
+  var outList = walkSync('/Volumes/SHAFFEROTO/newMediaItems', inList);
+  debugger;
 }
 
 findAndRenameFiles = function (mimeType, extension) {
@@ -103,7 +131,7 @@ exports.startSyncRenameFiles = function (request, response, next) {
 
 convertHeicFiles = function (heicMediaItems) {
 
-  const maxToDownload = 2;
+  const maxToDownload = 25;
 
   var convertHeicToJpg = (heicMediaItemIndex) => {
 
@@ -172,6 +200,7 @@ convertHeicFiles = function (heicMediaItems) {
 }
 
 exports.startSyncConvertHeicFiles = function (request, response, next) {
+  // exports.startSync = function (request, response, next) {
 
   response.render('syncer');
 
@@ -497,6 +526,11 @@ function fsCopyFile(sourcePath, destinationPath) {
   // fs.createReadStream(sourcePath).pipe(fs.createWriteStream(destinationPath));
   fse.copySync(sourcePath, destinationPath);
   console.log('copied from: ', sourcePath, ' to ', destinationPath);
+}
+
+// this didn't work for me...
+function fsMoveFile(sourcePath, destinationPath) {
+  fse.move(sourcePath, destinationPath, { overwrite: false });
 }
 
 
