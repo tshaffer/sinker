@@ -513,6 +513,139 @@ function fsMoveFile(sourcePath, destinationPath) {
   fse.move(sourcePath, destinationPath, { overwrite: false });
 }
 
+exports.startSyncJoelPhotoTest = function (request, response, next) {
+
+  response.render('syncer');
+
+  var access_token = oauth2Controller.getAccessToken();
+  console.log(access_token);
+
+  // id of photo that belongs to shaffer family photo's account
+  // const id = 'AEEKk93DRn8g-EAOZulURZgh9N1MFYvkCFPt2rbpjWjx2_qQVn3wzBhCnVB-otHkSqtBGONoCTksMzbxwbjzjgG8i_iVVYRl7Q';
+  const id = 'AEEKk92KHM-3CR4soquRLExDGyUhkG5IzMIYSC1XEGQyE2IGCnJZ17zUtbKDX91S4_lXabWb-Omi';
+  const apiEndpoint = 'https://photoslibrary.googleapis.com';
+  var getMediaItemEndpoint = apiEndpoint + '/v1/mediaItems/' + id;
+
+  requestPromise.get(getMediaItemEndpoint, {
+    headers: { 'Content-Type': 'application/json' },
+    json: true,
+    auth: { 'bearer': access_token },
+  }).then((result) => {
+    const populatedMediaItem = result;
+    var baseUrl = populatedMediaItem.baseUrl;
+    console.log('baseUrl: ');
+    console.log(baseUrl);
+
+    if (typeof populatedMediaItem.mediaMetadata === 'object') {
+      var mediaMetadata = populatedMediaItem.mediaMetadata;
+      if (typeof mediaMetadata.width === 'string' && typeof mediaMetadata.height === 'string') {
+        width = mediaMetadata.width;
+        height = mediaMetadata.height;
+        baseUrl = baseUrl + '=w' + width + '-h' + height;
+        console.log('baseUrl with dimensions:');
+        console.log(baseUrl);
+      }
+    }
+
+    const baseDir = '/Users/tedshaffer/Pictures/sinker/photosFromJoel/';
+
+    var fileName = id + '.jpg';
+    const filePath = path.join(baseDir, fileName);
+    const writer = fs.createWriteStream(filePath)
+    axios({
+      method: 'get',
+      url: baseUrl,
+      responseType: 'stream'
+    }).then((response) => {
+      response.data.pipe(writer);
+      writer.on('finish', () => {
+        console.log('write successful');
+      });
+      writer.on('error', (err) => {
+        console.log('write unsuccessful');
+        console.log(err);
+      });
+    }).catch((err) => {
+      console.log('mediaItem file get/write failed for id:');
+      console.log(id);
+      debugger;
+    });
+  }).catch((err) => {
+    console.log(err);
+    debugger;
+  });
+}
+
+// given a flat directory of photo files
+//    determine sharded location
+//    if file does not exist in sharded location, copy it there.
+//    does not read or write the following
+//      database
+//      photoCollectionManifest.json
+//    100% based on contents of source and target folders, subfolders.
+publishFilesToShardedFs = function(unshardedFilesFolder, baseTargetFolder) {
+
+  const files = [];
+
+  var numFilesCopied = 0;
+  var numFilesPreviouslyCopied = 0;
+
+  const directoryContents = fs.readdirSync(unshardedFilesFolder);
+
+  directoryContents.forEach((directoryContentItem) => {
+    if (!directoryContentItem.startsWith('.')) {
+      const filePath = path.join(unshardedFilesFolder, directoryContentItem);
+      const stats = fs.statSync(filePath);
+      if (stats.isFile()) {
+        const fileNameWithoutExtension = path.parse(directoryContentItem).name;
+        files.push(fileNameWithoutExtension);
+
+        const numChars = fileNameWithoutExtension.length;
+
+        const targetDirectory = path.join(
+          baseTargetFolder,
+          fileNameWithoutExtension.charAt(numChars - 2),
+          fileNameWithoutExtension.charAt(numChars - 1)
+        );
+
+        const targetFilePath = path.join(targetDirectory, directoryContentItem);
+        fsLocalFolderExists(targetDirectory)
+          .then((dirExists) => {
+            if (dirExists) {
+              if (!fs.existsSync(targetFilePath)) {
+                fsCopyFile(filePath, targetFilePath);
+                numFilesCopied++;
+                console.log('numFilesCopied: ', numFilesCopied);
+              }
+              else {
+                numFilesPreviouslyCopied++;
+                console.log('numFilesPreviousCopied: ', numFilesPreviouslyCopied);
+              }
+            }
+            else {
+              fsCreateNestedDirectory(targetDirectory)
+                  .then(() => {
+                    console.log('created directory: ', targetDirectory);
+                    fsCopyFile(filePath, targetFilePath);
+                    numFilesCopied++;
+                    console.log('numFilesCopied: ', numFilesCopied);
+                  })
+                  .catch((err) => {
+                    debugger;
+                  })
+            }
+          })
+          .catch((err) => {
+            console.log(err);
+            debugger;
+          });
+      }
+    }
+  });
+}
+
+// based on the contents of the photoCollectionManifest file, generate a list of photoIds that are referenced in albums
+// but not present in the mediaItems. Download all of those files.
 retrieveMissingAlbumPhotos = function () {
 
   // algorithm
@@ -663,69 +796,7 @@ retrieveMissingAlbumPhotos = function () {
   processGetJoelFile(0);
 }
 
-exports.startSyncJoelPhotoTest = function (request, response, next) {
-
-  response.render('syncer');
-
-  var access_token = oauth2Controller.getAccessToken();
-  console.log(access_token);
-
-  // id of photo that belongs to shaffer family photo's account
-  // const id = 'AEEKk93DRn8g-EAOZulURZgh9N1MFYvkCFPt2rbpjWjx2_qQVn3wzBhCnVB-otHkSqtBGONoCTksMzbxwbjzjgG8i_iVVYRl7Q';
-  const id = 'AEEKk92KHM-3CR4soquRLExDGyUhkG5IzMIYSC1XEGQyE2IGCnJZ17zUtbKDX91S4_lXabWb-Omi';
-  const apiEndpoint = 'https://photoslibrary.googleapis.com';
-  var getMediaItemEndpoint = apiEndpoint + '/v1/mediaItems/' + id;
-
-  requestPromise.get(getMediaItemEndpoint, {
-    headers: { 'Content-Type': 'application/json' },
-    json: true,
-    auth: { 'bearer': access_token },
-  }).then((result) => {
-    const populatedMediaItem = result;
-    var baseUrl = populatedMediaItem.baseUrl;
-    console.log('baseUrl: ');
-    console.log(baseUrl);
-
-    if (typeof populatedMediaItem.mediaMetadata === 'object') {
-      var mediaMetadata = populatedMediaItem.mediaMetadata;
-      if (typeof mediaMetadata.width === 'string' && typeof mediaMetadata.height === 'string') {
-        width = mediaMetadata.width;
-        height = mediaMetadata.height;
-        baseUrl = baseUrl + '=w' + width + '-h' + height;
-        console.log('baseUrl with dimensions:');
-        console.log(baseUrl);
-      }
-    }
-
-    const baseDir = '/Users/tedshaffer/Pictures/sinker/photosFromJoel/';
-
-    var fileName = id + '.jpg';
-    const filePath = path.join(baseDir, fileName);
-    const writer = fs.createWriteStream(filePath)
-    axios({
-      method: 'get',
-      url: baseUrl,
-      responseType: 'stream'
-    }).then((response) => {
-      response.data.pipe(writer);
-      writer.on('finish', () => {
-        console.log('write successful');
-      });
-      writer.on('error', (err) => {
-        console.log('write unsuccessful');
-        console.log(err);
-      });
-    }).catch((err) => {
-      console.log('mediaItem file get/write failed for id:');
-      console.log(id);
-      debugger;
-    });
-  }).catch((err) => {
-    console.log(err);
-    debugger;
-  });
-}
-
+// generate the manifest file based on the contents of the database
 generateManifestFromDB = function () {
 
   const manifestPath = '/Users/tedshaffer/Documents/Projects/sinker/photoCollectionManifest.json';
@@ -777,9 +848,12 @@ exports.startSync = function (request, response, next) {
 
   response.render('syncer');
 
-  generateManifestFromDB();
+  // generateManifestFromDB();
 
   // retrieveMissingAlbumPhotos();
-}
 
+  publishFilesToShardedFs(
+    '/Users/tedshaffer/Pictures/sinker/photosFromJoel/', 
+    '/Volumes/SHAFFEROTO/mediaItems');
+}
 
