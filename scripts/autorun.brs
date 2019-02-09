@@ -37,6 +37,8 @@ Sub RunTpp()
   tpp.timer.SetElapsed(4, 0)
 
   tpp.processHtmlEvent = processHtmlEvent
+  tpp.processUdpEvent = processUdpEvent
+
   tpp.startPlayback = startPlayback
   tpp.pausePlayback = pausePlayback
   tpp.switchAlbum = switchAlbum
@@ -174,6 +176,31 @@ Function newEar(msgPort As Object) As Object
   return t
 
 End Function
+
+
+Sub processUdpEvent(event As Object)
+
+  udpEvent$ = event.GetString()
+  print "udpEvent: ";udpEvent$
+
+  ' format
+  '   <command>!!<parameters>
+  regex = CreateObject("roRegEx", "!!", "i")
+  commandComponents = regex.Split(udpEvent$)
+  if commandComponents.Count() > 0 then
+    command$ = commandComponents[0]
+    if command$ = "album" then
+      if commandComponents.Count() > 1 then
+        albumName$ = commandComponents[1]
+        print "Switch to album: ";albumName$
+        m.switchAlbum(albumName$)
+      else
+        print "Syntax error: album name missing for album command"
+      endif
+    endif
+  endif
+
+End Sub
 
 
 Sub processHtmlEvent(event As Object)
@@ -450,8 +477,7 @@ Sub EventLoop(msgPort As Object)
         userData.HandleEvent(userData, event)
       endif
     else if type(event) = "roDatagramEvent" then
-      udpEvent$ = event.GetString()
-      print "udpEvent: ";udpEvent$
+      m.processUdpEvent(event)
     endif
   end while
 
