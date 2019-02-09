@@ -263,7 +263,12 @@ Sub nextPhoto()
   endif
 
   photoId$ = m.photoIds[m.photoIndex%]
-  filePath$ = m.baseDir$ + ":/mediaItems/" + photoId$ + ".jpg"
+  idLength% = len(photoId$)
+  dir1$ = mid(photoId$, idLength% - 1, 1)
+  dir2$ = mid(photoId$, idLength%, 1)
+
+  filePath$ = m.baseDir$ + ":/mediaItems/" + dir1$ + "/" + dir2$ + "/" + photoId$ + ".jpg"
+  print filePath$
 
   aa = {}
   aa.filename = filePath$
@@ -426,7 +431,10 @@ End Function
 
 Sub EventLoop(msgPort As Object)
 
-  m.switchAlbum("Lori-Shared#2")
+  ' m.switchAlbum("Lori-Shared#2")
+  ' m.switchAlbum("2015")
+  ' m.switchAlbum("test2")
+  m.switchAlbum("Trips")
   m.startPlayback()
 
   while true
@@ -441,6 +449,9 @@ Sub EventLoop(msgPort As Object)
       if type(userdata) = "roAssociativeArray" and type(userdata.HandleEvent) = "roFunction" then
         userData.HandleEvent(userData, event)
       endif
+    else if type(event) = "roDatagramEvent" then
+      udpEvent$ = event.GetString()
+      print "udpEvent: ";udpEvent$
     endif
   end while
 

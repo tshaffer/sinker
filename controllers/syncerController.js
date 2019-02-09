@@ -1,6 +1,7 @@
 var fs = require('fs');
 var path = require('path');
 var fse = require('fs-extra');
+const axios = require('axios')
 
 var cloudconvert = new (require('cloudconvert'))('njk3d6nMW4YwESyySBwBPDY30DMtwjeXjrvuUMInXBGdG1fWPBO5fgVhDMOsF8LK');
 
@@ -22,7 +23,7 @@ incrementDirCounter = function (dirNamesByKey, dirName) {
   }
 }
 
-exports.startSyncShard = function (request, response, next) {
+exports.startSyncShardFiles = function (request, response, next) {
 
   const files = [];
   const mediaItemsFolder = '/Volumes/SHAFFEROTO/mediaItems/';
@@ -60,10 +61,10 @@ exports.startSyncShard = function (request, response, next) {
             if (dirExists) {
               if (!fs.existsSync(targetFilePath)) {
                 fsCopyFile(filePath, targetFilePath);
-                fsMoveFile(filePath, backupPath);
+                // fsMoveFile(filePath, backupPath);
               }
               else {
-                fsMoveFile(filePath, backupPath);
+                // fsMoveFile(filePath, backupPath);
                 numFilesPreviouslyCopied++;
                 console.log('numFilesPreviousCopied: ', numFilesPreviouslyCopied);
               }
@@ -86,7 +87,7 @@ exports.startSyncShard = function (request, response, next) {
   });
 }
 
-exports.startSync = function (request, response, next) {
+exports.startSyncCountFilesInSubdirectory = function (request, response, next) {
   const walkSync = (dir, filelist = []) => {
     fs.readdirSync(dir).forEach(file => {
       filelist = fs.statSync(path.join(dir, file)).isDirectory()
@@ -137,7 +138,7 @@ convertHeicFiles = function (heicMediaItems) {
 
     var id = heicMediaItems[heicMediaItemIndex].id;
     var fileName = id + '.jpg';
-    var inputFilePath = '/Volumes/SHAFFEROTO/mediaItems/' + fileName;
+    var inputFilePath = '/Volumes/SHAFFEROTO/unshardedMediaItems/' + fileName;
     var outputFilePath = '/Users/tedshaffer/Pictures/sinker/convertedFromHeic/' + fileName;
 
     console.log('check for existence of ' + inputFilePath);
@@ -200,7 +201,6 @@ convertHeicFiles = function (heicMediaItems) {
 }
 
 exports.startSyncConvertHeicFiles = function (request, response, next) {
-  // exports.startSync = function (request, response, next) {
 
   response.render('syncer');
 
@@ -434,26 +434,6 @@ exports.startSyncGetMediaItems = function (request, response, next) {
 
     processGetMediaFiles('');
   });
-
-  // var downloadedFile = result.mediaItems[0];
-
-  // requestPromise.get(apiEndpoint + '/v1/albums', {
-  //   headers: { 'Content-Type': 'application/json' },
-  //   json: true,
-  //   auth: { 'bearer': access_token },
-  // }).then((result) => {
-  //   console.log(result);
-
-  //   // result.albums is an array of albums
-  //   // each album object
-  //   //    id: string
-  //   //    mediaItemsCount: string
-  //   //    title: string
-  //   //    productUrl: string
-  //   //      not clear what would be returned using this url
-
-
-  // });
 }
 
 exports.startSyncCreateManifest = function (request, response, next) {
@@ -533,7 +513,273 @@ function fsMoveFile(sourcePath, destinationPath) {
   fse.move(sourcePath, destinationPath, { overwrite: false });
 }
 
+retrieveMissingAlbumPhotos = function () {
 
+  // algorithm
+  //    open photoCollectionManifest
+  //      get list of all media files
+  //      get list of all photos in all albums
+  //      determine which are missing
+  //      download them
+  //
 
+  const manifestPath = '/Users/tedshaffer/Documents/Projects/sinker/photoCollectionManifest.json';
+
+  const manifestContents = fs.readFileSync(manifestPath);
+  const photoManifest = JSON.parse(manifestContents);
+  console.log(photoManifest);
+
+  const albums = photoManifest.albums;
+
+  const albumPhotoIds = {};
+
+  for (const albumName in albums) {
+    if (albums.hasOwnProperty(albumName)) {
+      const photosInAlbum = albums[albumName];
+      photosInAlbum.forEach((photoId) => {
+        if (!albumPhotoIds.hasOwnProperty(photoId)) {
+          albumPhotoIds[photoId] = true;
+        }
+      });
+    }
+  }
+
+  console.log('number of unique photos in albums: ');
+  console.log(Object.keys(albumPhotoIds).length);
+
+  const joelPhotoIds = [];
+  const mediaItems = [];
+
+  for (const albumPhotoId in albumPhotoIds) {
+    if (albumPhotoIds.hasOwnProperty(albumPhotoId)) {
+      if (!photoManifest.mediaItemsById.hasOwnProperty(albumPhotoId)) {
+        joelPhotoIds.push(albumPhotoId);
+      }
+    }
+  }
+
+  console.log('number of joel photos to retrieve: ', joelPhotoIds.length);
+
+  var access_token = oauth2Controller.getAccessToken();
+  const apiEndpoint = 'https://photoslibrary.googleapis.com';
+  const baseDir = '/Users/tedshaffer/Pictures/sinker/photosFromJoel/';
+
+  var totalNumberOfJoelPhotos = joelPhotoIds.length;
+  var processGetJoelFile = (fileIndex) => {
+    const id = joelPhotoIds[fileIndex];
+    var getMediaItemEndpoint = apiEndpoint + '/v1/mediaItems/' + id;
+
+    requestPromise.get(getMediaItemEndpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      json: true,
+      auth: { 'bearer': access_token },
+    }).then((result) => {
+      const downloadedMediaItem = result;
+
+      var creationTime = null;
+      var width = null;
+      var height = null;
+      var baseUrl = downloadedMediaItem.baseUrl;
+      if (typeof downloadedMediaItem.mediaMetadata === 'object') {
+        var mediaMetadata = downloadedMediaItem.mediaMetadata;
+        if (typeof mediaMetadata.creationTime === 'string') {
+          creationTime = new Date(mediaMetadata.creationTime);
+        }
+        if (typeof mediaMetadata.width === 'string' && typeof mediaMetadata.height === 'string') {
+          width = mediaMetadata.width;
+          height = mediaMetadata.height;
+          baseUrl = baseUrl + '=w' + width + '-h' + height;
+        }
+      }
+
+      var ext = ".jpg";
+      if (result.mimeType === 'image/heif') {
+        ext = ".heic"
+      }
+      var fileName = id + ext;
+      const filePath = path.join(baseDir, fileName);
+      const writer = fs.createWriteStream(filePath)
+      axios({
+        method: 'get',
+        url: baseUrl,
+        responseType: 'stream'
+      }).then((response) => {
+        response.data.pipe(writer);
+        writer.on('finish', () => {
+
+          console.log('write successful for file number: ', fileIndex);
+
+          var mediaItem = {
+            id,
+            baseUrl: downloadedMediaItem.baseUrl,
+            fileName: downloadedMediaItem.filename,
+            productUrl: downloadedMediaItem.productUrl,
+            mimeType: downloadedMediaItem.mimeType,
+            creationTime,
+            width,
+            height,
+          };
+          var newMediaItem = new MediaItem(mediaItem);
+          newMediaItem.save((err) => {
+            if (err) {
+              console.log(err);
+              debugger;
+            }
+            console.log('mediaItem saved to db');
+
+            fileIndex++;
+            if (fileIndex >= totalNumberOfJoelPhotos) {
+              console.log('process complete');
+              debugger;
+            }
+            else {
+              processGetJoelFile(fileIndex);
+            }
+          });
+        });
+        writer.on('error', (err) => {
+          console.log('write unsuccessful');
+          console.log(err);
+        });
+      }).catch((err) => {
+        console.log('mediaItem file get/write failed for id:');
+        console.log(id);
+        debugger;
+      });
+    }).catch((err) => {
+      console.log("error: ", err);
+      console.log(id);
+      fileIndex++;
+      if (fileIndex >= totalNumberOfJoelPhotos) {
+        console.log('complete');
+        debugger;
+      }
+      else {
+        processGetJoelFile(fileIndex);
+      }
+    });
+  };
+
+  processGetJoelFile(0);
+}
+
+exports.startSyncJoelPhotoTest = function (request, response, next) {
+
+  response.render('syncer');
+
+  var access_token = oauth2Controller.getAccessToken();
+  console.log(access_token);
+
+  // id of photo that belongs to shaffer family photo's account
+  // const id = 'AEEKk93DRn8g-EAOZulURZgh9N1MFYvkCFPt2rbpjWjx2_qQVn3wzBhCnVB-otHkSqtBGONoCTksMzbxwbjzjgG8i_iVVYRl7Q';
+  const id = 'AEEKk92KHM-3CR4soquRLExDGyUhkG5IzMIYSC1XEGQyE2IGCnJZ17zUtbKDX91S4_lXabWb-Omi';
+  const apiEndpoint = 'https://photoslibrary.googleapis.com';
+  var getMediaItemEndpoint = apiEndpoint + '/v1/mediaItems/' + id;
+
+  requestPromise.get(getMediaItemEndpoint, {
+    headers: { 'Content-Type': 'application/json' },
+    json: true,
+    auth: { 'bearer': access_token },
+  }).then((result) => {
+    const populatedMediaItem = result;
+    var baseUrl = populatedMediaItem.baseUrl;
+    console.log('baseUrl: ');
+    console.log(baseUrl);
+
+    if (typeof populatedMediaItem.mediaMetadata === 'object') {
+      var mediaMetadata = populatedMediaItem.mediaMetadata;
+      if (typeof mediaMetadata.width === 'string' && typeof mediaMetadata.height === 'string') {
+        width = mediaMetadata.width;
+        height = mediaMetadata.height;
+        baseUrl = baseUrl + '=w' + width + '-h' + height;
+        console.log('baseUrl with dimensions:');
+        console.log(baseUrl);
+      }
+    }
+
+    const baseDir = '/Users/tedshaffer/Pictures/sinker/photosFromJoel/';
+
+    var fileName = id + '.jpg';
+    const filePath = path.join(baseDir, fileName);
+    const writer = fs.createWriteStream(filePath)
+    axios({
+      method: 'get',
+      url: baseUrl,
+      responseType: 'stream'
+    }).then((response) => {
+      response.data.pipe(writer);
+      writer.on('finish', () => {
+        console.log('write successful');
+      });
+      writer.on('error', (err) => {
+        console.log('write unsuccessful');
+        console.log(err);
+      });
+    }).catch((err) => {
+      console.log('mediaItem file get/write failed for id:');
+      console.log(id);
+      debugger;
+    });
+  }).catch((err) => {
+    console.log(err);
+    debugger;
+  });
+}
+
+generateManifestFromDB = function () {
+
+  const manifestPath = '/Users/tedshaffer/Documents/Projects/sinker/photoCollectionManifest.json';
+
+  MediaItem.find(null, 'id fileName creationTime width height', (err, dbMediaItems) => {
+    Album.find(null, 'item title mediaItemIds', (err, dbAlbumItems) => {
+      var mediaItemsById = {};
+      for (var i = 0; i < dbMediaItems.length; i++) {
+        var dbMediaItem = dbMediaItems[i];
+        mediaItemsById[dbMediaItem.id] = {
+          id: dbMediaItem.id,
+          fileName: dbMediaItem.fileName,
+          width: dbMediaItem.width,
+          height: dbMediaItem.height,
+        };
+      }
+
+      var albumItemsByAlbumName = {};
+      for (var i = 0; i < dbAlbumItems.length; i++) {
+        var dbAlbumItem = dbAlbumItems[i];
+        var albumName = dbAlbumItem.title;
+        var mediaItemIdsInAlbum = [];
+        var dbMediaItemIdsInAlbum = dbAlbumItem.mediaItemIds;
+        for (var j = 0; j < dbMediaItemIdsInAlbum.length; j++) {
+          mediaItemIdsInAlbum.push(dbMediaItemIdsInAlbum[j]);
+        }
+        albumItemsByAlbumName[albumName] = dbMediaItemIdsInAlbum;
+      }
+
+      var manifestFile = {
+        'mediaItemsById': mediaItemsById,
+        'albums': albumItemsByAlbumName
+      };
+      var json = JSON.stringify(manifestFile, null, 2);
+      fs.writeFile(manifestPath, json, 'utf8', function (err) {
+        if (err) {
+          console.log('err');
+          console.log(err);
+        }
+        else {
+          console.log('photoCollectionManifest.json successfully written');
+        }
+      });
+    });
+  });
+}
+
+exports.startSync = function (request, response, next) {
+
+  response.render('syncer');
+
+  generateManifestFromDB();
+
+  // retrieveMissingAlbumPhotos();
+}
 
 
